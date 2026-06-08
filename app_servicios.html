@@ -9,16 +9,17 @@
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <style>
   :root{--ok:#107c41;--okbg:#dff3e4;--warn:#9a6700;--warnbg:#fff4ce;--bad:#c42b1c;
-        --line:#e1e4e8;--ink:#1b1b1b;--mut:#5a5a5a;--blue:#005fb8;--blue2:#0067c0}
+        --line:#e1e4e8;--ink:#1b1b1b;--mut:#5a5a5a;--blue:#005fb8;--blue2:#0067c0;
+        --maxw:1480px;--gutter:max(22px,calc((100% - 1480px)/2))}
   *{box-sizing:border-box}
   body{font:15.5px/1.5 "Segoe UI Variable Text","Segoe UI",system-ui,Arial;margin:0;color:var(--ink);background:#f3f3f3}
   .topbar{position:sticky;top:0;z-index:10}
-  header{background:var(--blue);color:#fff;padding:16px 22px}
+  header{background:var(--blue);color:#fff;padding:16px var(--gutter)}
   header h1{margin:0;font-size:22px;font-weight:600}
   .kpis{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}
   .kpis div{background:rgba(255,255,255,.16);border-radius:8px;padding:9px 15px;font-size:14px}
   .kpis b{font-size:25px;display:block}
-  .bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:12px 22px;background:#fff;
+  .bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:12px var(--gutter);background:#fff;
        border-bottom:1px solid var(--line)}
   .bar input,.bar select{padding:8px 11px;border:1px solid #bcbcbc;border-radius:7px;font:inherit}
   .bar input[type=search]{min-width:240px}
@@ -26,7 +27,12 @@
   .btn:hover{background:#f0f0f0}
   .btn.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
   .btn.primary:hover{background:var(--blue2)}
-  main{padding:18px 22px 90px}
+  main{padding:18px var(--gutter) 90px}
+  /* Kanban a sangre completa: en su vista, main usa todo el ancho (sin gutter centrado) */
+  main.full{padding-left:22px;padding-right:22px}
+  /* Pantallas anchas: ampliar todo para que no se vea pequeno */
+  @media (min-width:1680px){body{zoom:1.1}}
+  @media (min-width:2300px){body{zoom:1.2}}
   .help-box{margin:0 0 6px;border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden}
   .help-box>summary{cursor:pointer;padding:12px 16px;font-weight:600;font-size:15.5px;list-style:none;background:#eef4fb;color:var(--blue)}
   .help-box[open]>summary{border-bottom:1px solid var(--line)}
@@ -492,7 +498,7 @@ function App(){
       </div>
       </div>
 
-      <main>
+      <main className={vista==="kanban"?"full":""}>
         {vista==="servicios" && <React.Fragment>
         <details className="help-box">
           <summary>¿Cómo funciona? — guía rápida</summary>
