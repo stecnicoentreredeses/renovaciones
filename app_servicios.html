@@ -176,6 +176,14 @@
   .kb-rev.yes{background:#e7f6ec;color:#15803d;border:1px solid #bbe7cb}
   .kb-rev.no{background:#fdeced;color:#b42318;border:1px solid #f5c2c7}
   .kb-sel{font-size:11px;padding:3px 5px}
+  .ov{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+  .modal{background:#fff;border-radius:14px;width:100%;max-width:440px;padding:20px 22px;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+  .modal h3{margin:0 0 14px;font-size:17px}
+  .fld{margin-bottom:12px}
+  .fld label{display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px}
+  .fld input,.fld select{width:100%}
+  .modal .acts{display:flex;gap:9px;justify-content:flex-end;margin-top:8px}
+  .btn.ghost{background:#fff;color:var(--blue);border:1px solid #cdddf5}
 </style>
 </head>
 <body>
@@ -278,6 +286,7 @@ function App(){
   const [kbSinRev, setKbSinRev] = useState(false);
   const [kbConEur, setKbConEur] = useState(false);
   const [open, setOpen]     = useState({});
+  const [modalAlta, setModalAlta] = useState(false);
 
   useEffect(()=>save(K_MARKS, marks), [marks]);
   useEffect(()=>save(K_TOOLS, tools), [tools]);
@@ -299,6 +308,12 @@ function App(){
   function borrarTarea(t){ if(t.manual) setTman(ts=>ts.filter(x=>x.key!==t.key)); else setTO(t.key,{oculta:true}); }
 
   const todos = useMemo(()=>[...PAYLOAD.servicios, ...manual], [manual]);
+
+  const clientesLista = useMemo(()=>{
+    const m = {};
+    todos.forEach(s=>{ if(!m[s.codigo]) m[s.codigo] = s.cliente; });
+    return Object.entries(m).map(([codigo,cliente])=>({codigo,cliente})).sort((a,b)=>a.cliente.localeCompare(b.cliente));
+  }, [todos]);
 
   const setMark = (id, patch)=> setMarks(m=>({...m, [id]: {...(m[id]||{}), ...patch}}));
 
@@ -427,12 +442,15 @@ function App(){
     if(n && !tools.includes(n)) setTools([...tools, n]);
   }
 
-  function addManual(codigo, cliente){
-    const tipo = prompt("Servicio (tipo):"); if(!tipo) return;
-    const id = "MAN__"+codigo+"__"+Date.now();
-    setManual(ms=>[...ms, {id, codigo, cliente, tipo, origen:"Manual",
-      anios:{}, kd_inicio:null, ultima_fecha:null, uso_hasta_def:"", importe_sug:0, estado:"alta manual"}]);
+  function addServicioManual({modo, codigo, cliente, tipo, periodicidad, importe, fecha}){
+    const nuevo = modo==="nuevo";
+    const cod = nuevo ? ("MAN-"+Date.now()) : codigo;
+    const id = "MAN__"+cod+"__"+Date.now();
+    setManual(ms=>[...ms, {id, codigo:cod, cliente, tipo, origen:"Manual",
+      anios:{}, kd_inicio:null, ultima_fecha:fecha||null, uso_hasta_def:"",
+      importe_sug:Number(importe)||0, periodicidad:periodicidad||"anual", estado:"alta manual"}]);
     setOpen(o=>({...o,[id]:true}));
+    setModalAlta(false);
   }
 
   return (
@@ -473,6 +491,7 @@ function App(){
           <button aria-pressed={vista==="kanban"} onClick={()=>setVista("kanban")}>Kanban</button>
           <button aria-pressed={vista==="resumen"} onClick={()=>setVista("resumen")}>Resumen</button>
         </span>
+        {vista==="servicios" && <button className="btn" onClick={()=>setModalAlta(true)}>+ Añadir servicio manual</button>}
         {vista==="servicios" && <button className="btn" onClick={()=>colapsarTodo(true)}>Contraer todo</button>}
         {vista==="servicios" && <button className="btn" onClick={()=>colapsarTodo(false)}>Expandir todo</button>}
         <span className="muted">{grupos.length} clientes</span>
@@ -519,7 +538,7 @@ function App(){
                 <label className="chk" style={{paddingTop:0}} title="Marca cuando hayas revisado todos sus servicios">
                   <input type="checkbox" checked={!!v.revisado} onChange={e=>setCM(g.codigo,{revisado:e.target.checked, collapsed:e.target.checked})} /> Revisado
                 </label>
-                <button className="link add" onClick={()=>addManual(g.codigo, g.cliente)}>+ Añadir servicio</button>
+                <button className="link add" onClick={()=>setModalAlta(true)}>+ Añadir servicio</button>
               </span>
             </h2>
             {!v.collapsed && g.items.map(s=>(
@@ -592,6 +611,64 @@ function App(){
           onEstado={(cod,estado)=>setCM(cod,{estado})}
           onRevisado={(cod,val)=>setCM(cod,{revisado:val})} />}
       </main>
+      {modalAlta && <AltaManualForm
+        clientes={clientesLista}
+        onClose={()=>setModalAlta(false)}
+        onAdd={addServicioManual} />}
+    </div>
+  );
+}
+
+function AltaManualForm({clientes, onClose, onAdd}){
+  const [modo, setModo] = useState("existente");
+  const [codigo, setCodigo] = useState("");
+  const [nuevoNom, setNuevoNom] = useState("");
+  const [tipo, setTipo] = useState("");
+  const [periodicidad, setPeriodicidad] = useState("anual");
+  const [importe, setImporte] = useState("");
+  const [fecha, setFecha] = useState("");
+  function submit(e){
+    e.preventDefault();
+    if(!tipo.trim()) return;
+    if(modo==="existente" && !codigo) return;
+    if(modo==="nuevo" && !nuevoNom.trim()) return;
+    const cli = modo==="existente" ? (clientes.find(c=>c.codigo===codigo)||{}).cliente : nuevoNom.trim();
+    onAdd({modo, codigo, cliente:cli, tipo:tipo.trim(), periodicidad, importe, fecha});
+  }
+  return (
+    <div className="ov on" onMouseDown={e=>{ if(e.target.classList.contains("ov")) onClose(); }}>
+      <form className="modal" onSubmit={submit}>
+        <h3>Añadir servicio manual</h3>
+        <div className="fld">
+          <label>Cliente</label>
+          <select value={modo==="nuevo"?"__new":codigo} onChange={e=>{
+            if(e.target.value==="__new"){ setModo("nuevo"); }
+            else { setModo("existente"); setCodigo(e.target.value); }
+          }}>
+            <option value="">— elegir cliente existente —</option>
+            {clientes.map(c=><option key={c.codigo} value={c.codigo}>{c.cliente} ({c.codigo})</option>)}
+            <option value="__new">+ Cliente nuevo (no está en FactuSol)…</option>
+          </select>
+        </div>
+        {modo==="nuevo" && <div className="fld">
+          <label>Nombre del cliente nuevo</label>
+          <input value={nuevoNom} onChange={e=>setNuevoNom(e.target.value)} placeholder="Ej. CARPINTERÍAS DEL SUR" autoFocus />
+        </div>}
+        <div className="fld"><label>Servicio (tipo)</label>
+          <input value={tipo} onChange={e=>setTipo(e.target.value)} placeholder="Ej. Mantenimiento web" /></div>
+        <div className="fld"><label>Periodicidad</label>
+          <select value={periodicidad} onChange={e=>setPeriodicidad(e.target.value)}>
+            <option value="anual">Anual</option><option value="mensual">Mensual</option><option value="puntual">Puntual</option>
+          </select></div>
+        <div className="fld"><label>Importe sugerido (€)</label>
+          <input type="number" value={importe} onChange={e=>setImporte(e.target.value)} placeholder="0" /></div>
+        <div className="fld"><label>Fecha de referencia</label>
+          <input type="date" value={fecha} onChange={e=>setFecha(e.target.value)} /></div>
+        <div className="acts">
+          <button type="button" className="btn ghost" onClick={onClose}>Cancelar</button>
+          <button type="submit" className="btn">Añadir</button>
+        </div>
+      </form>
     </div>
   );
 }
