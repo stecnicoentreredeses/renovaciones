@@ -164,6 +164,9 @@
   .kb-card:hover{border-color:#c5d3e8}
   .kb-nm{font-weight:600;font-size:13px}
   .kb-cod{font-size:11px;color:#9aa4b2;font-weight:500}
+  .kb-open{display:block;margin-top:6px;border:1px solid #cdddf5;background:#f4f9ff;color:var(--blue);
+           border-radius:7px;padding:4px 8px;font:inherit;font-size:11.5px;font-weight:600;cursor:pointer}
+  .kb-open:hover{background:#e7f1fe}
   .kb-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;font-size:11px}
   .kb-tag{background:#f3f5f9;border:1px solid var(--line);border-radius:6px;padding:1px 7px;color:#4b5563}
   .kb-tag.eur{background:#eafaf0;border-color:#bbe7cb;color:#15803d}
@@ -296,6 +299,7 @@ function App(){
 
   const cm = (cod)=> cmeta[cod] || {};
   const setCM = (cod, patch)=> setCmeta(c=>({...c, [cod]: {...(c[cod]||{}), ...patch}}));
+  function abrirFicha(cod){ setQ(cod); setVista("servicios"); setCM(cod, {collapsed:false}); }
   const setTO = (key, patch)=> setTov(o=>({...o, [key]: {...(o[key]||{}), ...patch}}));
   const setMan = (key, patch)=> setTman(ts=>ts.map(t=>t.key===key?{...t, ...patch}:t));
   function editTarea(t, patch){ t.manual ? setMan(t.key, patch) : setTO(t.key, patch); }
@@ -644,7 +648,8 @@ function App(){
           total={codigosTodos.length} nRevisados={nRevisados}
           sinRev={kbSinRev} conEur={kbConEur} setSinRev={setKbSinRev} setConEur={setKbConEur}
           onEstado={(cod,estado)=>setCM(cod,{estado})}
-          onRevisado={(cod,val)=>setCM(cod,{revisado:val})} />}
+          onRevisado={(cod,val)=>setCM(cod,{revisado:val})}
+          onAbrir={abrirFicha} />}
       </main>
       {modalAlta && <AltaManualForm
         clientes={clientesLista}
@@ -709,7 +714,7 @@ function AltaManualForm({clientes, preCodigo, onClose, onAdd}){
   );
 }
 
-function Kanban({data, cols, total, nRevisados, sinRev, conEur, setSinRev, setConEur, onEstado, onRevisado}){
+function Kanban({data, cols, total, nRevisados, sinRev, conEur, setSinRev, setConEur, onEstado, onRevisado, onAbrir}){
   function visible(c){
     if(sinRev && c.revisado) return false;
     if(conEur && !(c.total>0)) return false;
@@ -738,7 +743,9 @@ function Kanban({data, cols, total, nRevisados, sinRev, conEur, setSinRev, setCo
               {items.map(c=>(
                 <div className="kb-card" key={c.codigo} draggable
                      onDragStart={e=>e.dataTransfer.setData("text/cod", c.codigo)}>
-                  <div className="kb-nm">{c.cliente} <span className="kb-cod">{c.codigo}</span></div>
+                  <div className="kb-nm">{c.cliente} <span className="kb-cod">{c.codigo}</span>
+                    <button className="kb-open" title="Abrir su ficha de servicios" onClick={e=>{e.stopPropagation(); onAbrir(c.codigo);}}>Ver ficha →</button>
+                  </div>
                   <div className="kb-meta">
                     <span className="kb-tag">{c.nServ} {c.nServ===1?"servicio":"servicios"}</span>
                     {c.total>0 && <span className="kb-tag eur">{Math.round(c.total)} €</span>}
