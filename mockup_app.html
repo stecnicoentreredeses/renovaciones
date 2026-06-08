@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup — App renovaciones (4 vistas)</title>
+<style>
+  :root{--blue:#1f6feb;--blue-d:#1a5fd0;--line:#e3e8ef;--bg:#f4f6fa;--ink:#1f2733;--muted:#6b7280}
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.45 "Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+
+  header{background:var(--blue);color:#fff;padding:14px 22px}
+  header h1{margin:0;font-size:18px;font-weight:600}
+  header .sub{font-size:12px;color:#cfe3f7;margin-top:2px}
+  .kpis{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  .kpis div{background:rgba(255,255,255,.12);border-radius:8px;padding:6px 12px;font-size:12px}
+  .kpis b{display:block;font-size:18px;line-height:1.1}
+
+  /* pestañas */
+  .tabs{display:flex;gap:4px;padding:0 22px;background:#fff;border-bottom:1px solid var(--line)}
+  .tabs button{appearance:none;border:0;background:transparent;padding:13px 18px;font:inherit;
+               font-weight:600;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px}
+  .tabs button.on{color:var(--blue);border-bottom-color:var(--blue)}
+  .tabs button:hover{color:var(--blue-d)}
+
+  main{padding:18px 22px}
+  .view{display:none}.view.on{display:block}
+  .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+  .btn{background:var(--blue);color:#fff;border:0;border-radius:8px;padding:9px 15px;font:inherit;font-weight:600;cursor:pointer}
+  .btn.ghost{background:#fff;color:var(--blue);border:1px solid #cdddf5}
+  input,select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+
+  /* SERVICIOS */
+  .cli{background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden}
+  .cli > .head{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;background:#fafbfd}
+  .cli .nm{font-weight:600}.cli .cod{font-size:11px;color:#9aa4b2}
+  .badge{font-size:11px;border-radius:6px;padding:1px 8px;border:1px solid var(--line);background:#f3f5f9;color:#4b5563}
+  .b-kd{background:#eef4ff;border-color:#c9ddff;color:#1f6feb}
+  .b-rev{background:#e7f6ec;border-color:#bbe7cb;color:#15803d}
+  .b-man{background:#f6efe7;border-color:#e7d3bb;color:#9a6314}
+  .srv{padding:11px 16px;border-top:1px solid var(--line)}
+  .srv .r1{display:flex;align-items:center;gap:8px}
+  .srv .tipo{font-weight:600}
+  .yc{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+  .yc .y{border:1px solid var(--line);border-radius:9px;padding:6px 9px;min-width:78px;text-align:center;font-size:12px}
+  .yc .y .a{font-weight:700;color:#374151}
+  .yc .y .opt{display:flex;gap:3px;margin-top:5px;justify-content:center}
+  .yc .y .opt span{font-size:10px;border:1px solid var(--line);border-radius:5px;padding:1px 6px;cursor:pointer}
+  .yc .y .opt .si{background:#e7f6ec;border-color:#bbe7cb;color:#15803d}
+  .yc .y .opt .no{background:#fdeced;border-color:#f5c2c7;color:#b42318}
+
+  /* AGENDA */
+  .agenda{background:#fff;border:1px solid var(--line);border-radius:12px;max-width:760px}
+  .agenda h3{margin:0;padding:13px 16px;border-bottom:1px solid var(--line);font-size:15px;display:flex;align-items:center;gap:10px}
+  .trow{display:flex;align-items:center;gap:11px;padding:11px 16px;border-bottom:1px solid #f0f2f6}
+  .trow:last-child{border-bottom:0}
+  .trow .chk{width:18px;height:18px;border:2px solid #cdd5e0;border-radius:5px;flex:0 0 auto}
+  .trow.done .ti{text-decoration:line-through;color:#9aa4b2}
+  .trow .ti{flex:1;font-weight:500}
+  .trow .fch{font-size:12px;color:#6b7280}
+  .dotr{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+  .dr-venc{background:#e5484d}.dr-soon{background:#e0a800}.dr-ok{background:#22a06b}
+
+  /* KANBAN */
+  .prog{flex:1;min-width:180px;max-width:320px}
+  .prog .track{height:9px;background:#e7ecf3;border-radius:6px;overflow:hidden}
+  .prog .fill{height:100%;width:64%;background:var(--blue)}
+  .prog small{color:#6b7280}
+  .toggle{display:flex;align-items:center;gap:7px;font-size:13px;color:#374151;cursor:pointer;
+          background:#fff;border:1px solid var(--line);border-radius:8px;padding:7px 12px}
+  .board{display:flex;gap:13px;overflow-x:auto;align-items:flex-start;padding-bottom:6px}
+  .col{flex:0 0 240px;background:#eef1f6;border:1px solid var(--line);border-radius:12px;padding:10px}
+  .col > h3{margin:2px 4px 10px;font-size:13px;display:flex;align-items:center;gap:8px;color:#374151}
+  .col .dot{width:9px;height:9px;border-radius:50%}
+  .col .count{margin-left:auto;background:#fff;border:1px solid var(--line);border-radius:20px;font-size:11px;padding:1px 9px;color:#6b7280}
+  .d-sin{background:#9aa4b2}.d-hab{background:#e0a800}.d-pf{background:#1f6feb}.d-fac{background:#16a34a}.d-ter{background:#6b7280}
+  .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 11px;margin-bottom:9px;box-shadow:0 1px 2px rgba(16,24,40,.04);cursor:grab}
+  .card .nm{font-weight:600;font-size:13px}.card .cod{font-size:11px;color:#9aa4b2}
+  .card .meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;font-size:11px}
+  .tag{background:#f3f5f9;border:1px solid var(--line);border-radius:6px;padding:1px 7px;color:#4b5563}
+  .tag.eur{background:#eafaf0;border-color:#bbe7cb;color:#15803d}
+  .tag.fch{background:#fff4e5;border-color:#ffd9a8;color:#b45309}
+  .rev{display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600}
+  .rev.yes{background:#e7f6ec;color:#15803d;border:1px solid #bbe7cb}
+  .rev.no{background:#fdeced;color:#b42318;border:1px solid #f5c2c7}
+
+  /* RESUMEN */
+  .rescli{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:11px;max-width:760px}
+  .rescli .top{display:flex;align-items:center;gap:10px}
+  .rescli .tot{margin-left:auto;font-weight:700;color:#15803d}
+  .rescli ul{margin:9px 0 0;padding-left:18px;color:#4b5563;font-size:13px}
+
+  /* MODAL alta manual */
+  .ov{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;padding:20px}
+  .ov.on{display:flex}
+  .modal{background:#fff;border-radius:14px;width:100%;max-width:440px;padding:20px 22px;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+  .modal h3{margin:0 0 14px;font-size:17px}
+  .fld{margin-bottom:12px}
+  .fld label{display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px}
+  .fld input,.fld select{width:100%}
+  .modal .acts{display:flex;gap:9px;justify-content:flex-end;margin-top:8px}
+  .hint{font-size:12px;color:#6b7280;margin-top:14px}
+</style>
+</head>
+<body>
+  <header>
+    <h1>Renovaciones — decisión de servicios <span style="font-weight:400;font-size:12px;color:#cfe3f7">jero_autonomo · 08/06/2026 · MOCKUP</span></h1>
+    <div class="sub">maqueta navegable para decidir el diseño — no es la app real</div>
+    <div class="kpis">
+      <div><b>521</b>servicios</div>
+      <div><b>318</b>decididos</div>
+      <div><b>203</b>sin decidir</div>
+      <div><b>87/135</b>clientes revisados</div>
+      <div><b>46</b>tareas activas</div>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="on" data-v="servicios">Servicios</button>
+    <button data-v="agenda">Agenda</button>
+    <button data-v="kanban">Kanban</button>
+    <button data-v="resumen">Resumen</button>
+  </nav>
+
+  <main>
+    <!-- ===== SERVICIOS ===== -->
+    <section class="view on" id="v-servicios">
+      <div class="toolbar">
+        <input type="search" placeholder="Buscar cliente, código o servicio…" style="min-width:260px">
+        <select><option>Servicios: todos</option><option>Sin decidir</option><option>Decididos</option></select>
+        <button class="btn ghost" onclick="document.getElementById('ov').classList.add('on')">+ Añadir servicio manual</button>
+      </div>
+
+      <div class="cli">
+        <div class="head">
+          <span style="color:#9aa4b2">▾</span>
+          <span class="nm">DACRIDENTAL S.L.</span><span class="cod">000331</span>
+          <span class="badge b-rev">✓ revisado</span>
+          <span style="margin-left:auto"><span class="badge">5 servicios</span></span>
+        </div>
+        <div class="srv">
+          <div class="r1"><span class="tipo">Antivirus</span><span class="badge b-rec">Recurrente</span>
+            <span style="font-size:12px;color:#6b7280;margin-left:6px">Últ. factura: 12/03/2024</span></div>
+          <div class="yc">
+            <div class="y"><div class="a">2022</div><div style="font-size:11px;color:#9aa4b2">35 €</div></div>
+            <div class="y"><div class="a">2023</div><div style="font-size:11px;color:#9aa4b2">35 €</div></div>
+            <div class="y"><div class="a">2024</div><div class="opt"><span class="si">Sí</span><span>No</span></div></div>
+            <div class="y"><div class="a">2025</div><div class="opt"><span>Sí</span><span class="no">No</span></div></div>
+            <div class="y"><div class="a">2026</div><div class="opt"><span>Sí</span><span>No</span></div></div>
+          </div>
+        </div>
+        <div class="srv">
+          <div class="r1"><span class="tipo">Web + dominio</span><span class="badge b-rec">Recurrente</span></div>
+        </div>
+      </div>
+
+      <div class="cli">
+        <div class="head">
+          <span style="color:#9aa4b2">▸</span>
+          <span class="nm">CARPINTERÍAS NUEVO CLIENTE</span><span class="cod">MAN-1733</span>
+          <span class="badge b-man">alta manual</span>
+          <span style="margin-left:auto"><span class="badge">1 servicio</span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== AGENDA ===== -->
+    <section class="view" id="v-agenda">
+      <div class="toolbar">
+        <label class="toggle"><input type="checkbox"> ver hechas</label>
+        <button class="btn ghost">+ tarea</button>
+      </div>
+      <div class="agenda">
+        <h3>Agenda de tareas <span class="badge">46 activas</span></h3>
+        <div class="trow"><span class="dotr dr-venc"></span><span class="chk"></span>
+          <span class="ti">Facturar Antivirus 2024 — DACRIDENTAL S.L. · 35 €</span><span class="fch">vencida · 14/05/2025</span></div>
+        <div class="trow"><span class="dotr dr-soon"></span><span class="chk"></span>
+          <span class="ti">No renovar dominio dacridental.es (Dinahosting)</span><span class="fch">caduca 02/07/2026</span></div>
+        <div class="trow"><span class="dotr dr-ok"></span><span class="chk"></span>
+          <span class="ti">Ofrecer mantenimiento/bonos — CLÍNICA VEGA</span><span class="fch">19/09/2026</span></div>
+        <div class="trow done"><span class="dotr dr-ok"></span>
+          <span class="chk" style="background:#22a06b;border-color:#22a06b"></span>
+          <span class="ti">Facturar hosting 2025 — INMOBILIARIA PAR · 90 €</span><span class="fch">hecha</span></div>
+      </div>
+    </section>
+
+    <!-- ===== KANBAN ===== -->
+    <section class="view" id="v-kanban">
+      <div class="toolbar">
+        <div class="prog"><small><b>87 / 135</b> revisados · eje independiente de la columna</small>
+          <div class="track"><div class="fill"></div></div></div>
+        <label class="toggle"><input type="checkbox"> Solo sin revisar</label>
+        <label class="toggle"><input type="checkbox"> Solo con € pendiente</label>
+      </div>
+      <div class="board">
+        <div class="col"><h3><span class="dot d-sin"></span> Sin clasificar <span class="count">2</span></h3>
+          <div class="card"><div class="nm">GESTORÍA LEÓN <span class="cod">000128</span></div>
+            <div class="meta"><span class="tag">4 servicios</span></div><span class="rev no">○ sin revisar</span></div>
+          <div class="card"><div class="nm">PANADERÍA SOL <span class="cod">000507</span></div>
+            <div class="meta"><span class="tag">1 servicio</span></div><span class="rev yes">✓ revisado</span></div>
+        </div>
+        <div class="col"><h3><span class="dot d-hab"></span> Hablar cliente <span class="count">1</span></h3>
+          <div class="card"><div class="nm">DACRIDENTAL S.L. <span class="cod">000331</span></div>
+            <div class="meta"><span class="tag">5 servicios</span><span class="tag fch">renueva 14/07</span></div><span class="rev yes">✓ revisado</span></div>
+        </div>
+        <div class="col"><h3><span class="dot d-pf"></span> Pendiente facturar <span class="count">2</span></h3>
+          <div class="card"><div class="nm">ACEITES MALAGÓN <span class="cod">000089</span></div>
+            <div class="meta"><span class="tag eur">35 €</span><span class="tag">Antivirus 2024</span></div><span class="rev yes">✓ revisado</span></div>
+          <div class="card"><div class="nm">ASESORÍA DUERO <span class="cod">000143</span></div>
+            <div class="meta"><span class="tag eur">120 €</span></div><span class="rev no">○ sin revisar</span></div>
+        </div>
+        <div class="col"><h3><span class="dot d-fac"></span> Facturado <span class="count">1</span></h3>
+          <div class="card"><div class="nm">INMOBILIARIA PAR <span class="cod">000077</span></div>
+            <div class="meta"><span class="tag">Hosting</span></div><span class="rev yes">✓ revisado</span></div>
+        </div>
+        <div class="col"><h3><span class="dot d-ter"></span> Terminado <span class="count">1</span></h3>
+          <div class="card"><div class="nm">FARMACIA CENTRAL <span class="cod">000019</span></div>
+            <div class="meta"><span class="tag">Cerrado 2024</span></div><span class="rev yes">✓ revisado</span></div>
+        </div>
+      </div>
+      <p class="hint">Arrastras la tarjeta entre columnas para cambiar su estado de gestión. El badge ✓ revisado / ○ sin revisar es el otro eje, independiente (mira ASESORÍA DUERO: en "Pendiente facturar" pero sin revisar).</p>
+    </section>
+
+    <!-- ===== RESUMEN ===== -->
+    <section class="view" id="v-resumen">
+      <div class="toolbar"><span class="badge" style="font-size:13px">3 clientes con acciones · 155 € a facturar</span></div>
+      <div class="rescli">
+        <div class="top"><span class="nm" style="font-weight:600">ACEITES MALAGÓN</span><span class="cod">000089</span>
+          <span class="badge b-rev">✓ revisado</span><span class="tot">35 €</span></div>
+        <ul><li>Facturar Antivirus 2024 — 35 € (14/05)</li></ul>
+      </div>
+      <div class="rescli">
+        <div class="top"><span class="nm" style="font-weight:600">ASESORÍA DUERO</span><span class="cod">000143</span>
+          <span class="tot">120 €</span></div>
+        <ul><li>Facturar mantenimiento 2025 — 120 €</li></ul>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL alta manual -->
+  <div class="ov" id="ov">
+    <div class="modal">
+      <h3>Añadir servicio manual</h3>
+      <div class="fld">
+        <label>Cliente</label>
+        <select id="cliSel" onchange="document.getElementById('nuevoNm').style.display=this.value==='__new'?'block':'none'">
+          <option value="">— elegir cliente existente —</option>
+          <option>DACRIDENTAL S.L. (000331)</option>
+          <option>ACEITES MALAGÓN (000089)</option>
+          <option value="__new">+ Cliente nuevo (no está en FactuSol)…</option>
+        </select>
+      </div>
+      <div class="fld" id="nuevoNm" style="display:none">
+        <label>Nombre del cliente nuevo</label>
+        <input placeholder="Ej. CARPINTERÍAS DEL SUR">
+      </div>
+      <div class="fld"><label>Servicio (tipo)</label><input placeholder="Ej. Mantenimiento web"></div>
+      <div class="fld"><label>Periodicidad</label>
+        <select><option>Anual</option><option>Mensual</option><option>Puntual</option></select></div>
+      <div class="fld"><label>Importe sugerido (€)</label><input type="number" placeholder="0"></div>
+      <div class="fld"><label>Fecha de referencia</label><input type="date"></div>
+      <div class="acts">
+        <button class="btn ghost" onclick="document.getElementById('ov').classList.remove('on')">Cancelar</button>
+        <button class="btn" onclick="document.getElementById('ov').classList.remove('on')">Añadir</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.querySelectorAll('.tabs button').forEach(b=>{
+      b.onclick=()=>{
+        document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('on'));
+        document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
+        b.classList.add('on');
+        document.getElementById('v-'+b.dataset.v).classList.add('on');
+      };
+    });
+  </script>
+</body>
+</html>
