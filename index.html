@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Marcado de Renovaciones · Entreredes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>html,body{margin:0;background:#0b1120;}#root{max-width:1100px;margin:0 auto;}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+
+
+const TIPOS = {
+  antivirus:"Antivirus", hosting:"Hosting", dominio:"Dominio", backup:"Backup",
+  licencia:"Licencia (esc. remoto)", getradi:"Getradi", dolibarr:"Dolibarr", web:"Web",
+  mantenimiento_web:"Mantenim. web", dpd:"DPD", rrss:"RRSS", correo:"Correo",
+  certificado:"Certificado SSL", otro:"Otro recurrente",
+};
+const eur=(n)=>new Intl.NumberFormat("es-ES",{style:"currency",currency:"EUR",maximumFractionDigits:2}).format(n||0);
+const eur0=(n)=>new Intl.NumberFormat("es-ES",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n||0);
+const sugAccion=(s)=> s? s.split(":")[0] : null;
+const sugTipo=(s)=> s&&s.startsWith("renov:")? s.split(":")[1] : null;
+
+function MarcadoRenovaciones({data}){
+  const CLIENTES = data;
+  const TOTAL = CLIENTES.reduce((a,c)=>a+c.n_lineas,0);
+  const [marks,setMarks]=useState({});
+  const [loaded,setLoaded]=useState(false);
+  const [sel,setSel]=useState(null);
+  const [q,setQ]=useState("");
+  const [filtro,setFiltro]=useState("todos");
+  const [showExport,setShowExport]=useState(false);
+
+  useEffect(()=>{try{const r=localStorage.getItem("renov:marcas3");if(r)setMarks(JSON.parse(r));}catch(e){}setLoaded(true);},[]);
+  const persist=(n)=>{setMarks(n);try{localStorage.setItem("renov:marcas3",JSON.stringify(n));}catch(e){console.error(e);}};
+  const descargar=()=>{const blob=new Blob([JSON.stringify(exportData,null,1)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="marcas.json";a.click();URL.revokeObjectURL(url);};
+  const setMark=(id,patch)=>{const cur=marks[id]||{};persist({...marks,[id]:{...cur,...patch}});};
+  const clearMark=(id)=>{const n={...marks};delete n[id];persist(n);};
+
+  const aceptarSug=(c)=>{const n={...marks};
+    c.facturas.forEach(f=>f.lineas.forEach(l=>{
+      if(n[l.id]===undefined && l.sug){
+        const a=sugAccion(l.sug);
+        n[l.id]= a==="renov" ? {a:"renov",t:sugTipo(l.sug)||"otro",estado:"activo"} : {a};
+      }
+    }));persist(n);};
+
+  const stats=useMemo(()=>{let rev=0,ren=0,con=0;Object.values(marks).forEach(m=>{rev++;if(m.a==="renov")ren++;if(m.a==="conciliar")con++;});
+    return{rev,ren,con,pct:Math.round(rev/TOTAL*100)};},[marks]);
+
+  const resumen=(c)=>{let rev=0,ren=0,con=0,sug=0;
+    c.facturas.forEach(f=>f.lineas.forEach(l=>{const m=marks[l.id];
+      if(m){rev++;if(m.a==="renov")ren++;if(m.a==="conciliar")con++;}else if(l.sug)sug++;}));
+    return{rev,ren,con,sug,total:c.n_lineas};};
+
+  const lista=useMemo(()=>{let a=CLIENTES;
+    if(q.trim()){const s=q.toLowerCase();a=a.filter(c=>c.nombre.toLowerCase().includes(s)||(c.codigo||"").includes(s)||(c.nif||"").toLowerCase().includes(s));}
+    if(filtro==="pendientes")a=a.filter(c=>{const r=resumen(c);return r.rev<r.total;});
+    if(filtro==="conrenov")a=a.filter(c=>resumen(c).ren>0);
+    if(filtro==="conciliar")a=a.filter(c=>resumen(c).con>0);
+    return a;},[q,filtro,marks]);
+
+  const exportData=useMemo(()=>{const o=[];
+    CLIENTES.forEach(c=>c.facturas.forEach(f=>f.lineas.forEach(l=>{const m=marks[l.id];
+      if(m)o.push({codigo:c.codigo,cliente:c.nombre,fecha:f.fecha,desc:l.desc,importe:l.importe,
+        accion:m.a,tipo:m.t||null,uso_hasta:m.hasta||null,estado:m.estado||null,mayorista:m.may||null});})));
+    return o;},[marks]);
+
+  if(!loaded)return <div style={S.loading}>Cargando marcas…</div>;
+  const cli=sel?CLIENTES.find(c=>c.codigo===sel):null;
+
+  return(<div style={S.app}><style>{CSS}</style>
+    <header style={S.header}>
+      <div><h1 style={S.h1}>Marcado de Renovaciones</h1>
+      <p style={S.sub}>FactuSol 2022–2024 · <b>jero_autonomo</b> · clasifica cada concepto</p></div>
+      <button onClick={()=>setShowExport(!showExport)} style={S.exportBtn}>Exportar ({stats.rev})</button>
+    </header>
+
+    <div style={S.progressWrap}>
+      <div style={S.progressBar}><div style={{...S.progressFill,width:`${stats.pct}%`}}/></div>
+      <span style={S.progressTxt}>{stats.rev}/{TOTAL} · {stats.ren} renov · {stats.con} conciliar</span>
+    </div>
+
+    <div style={S.bolsas}>
+      <span style={S.bolsa}>Bolsa incidencias/averías (Coda) — pendiente de importar</span>
+      <span style={S.bolsa}>Bolsa pedidos mayorista tóner — pendiente de importar</span>
+    </div>
+
+    {showExport&&(<div style={S.card}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><span style={S.cardTitle}>Marcas exportables (JSON)</span><button onClick={descargar} style={S.dlBtn}>⬇ Descargar marcas.json</button></div>
+      <textarea readOnly value={JSON.stringify(exportData,null,1)} style={S.exportArea} onFocus={e=>e.target.select()}/>
+    </div>)}
+
+    {!cli&&(<>
+      <div style={S.toolbar}>
+        <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Buscar cliente, código o NIF…" style={S.search}/>
+        <div style={S.filtros}>{[["todos","Todos"],["pendientes","Pendientes"],["conrenov","Renovación"],["conciliar","Conciliar"]].map(([k,l])=>(
+          <button key={k} onClick={()=>setFiltro(k)} style={{...S.chip,...(filtro===k?S.chipActive:{})}}>{l}</button>))}</div>
+        <span style={S.count}>{lista.length}</span>
+      </div>
+      <div style={S.listaWrap}>{lista.map(c=>{const r=resumen(c);const completo=r.rev===r.total;
+        return(<button key={c.codigo} onClick={()=>setSel(c.codigo)} style={S.clienteRow}>
+          <div style={S.clienteInfo}><div style={S.clienteNombre}>{c.nombre}</div>
+            <div style={S.clienteMeta}><span style={S.codigo}>{c.codigo}</span>{c.nif&&<span style={S.nif}>{c.nif}</span>}
+              <span style={S.anios}>{c.anios.join("·")}</span><span style={S.lineCount}>{c.n_facturas}f · {c.n_lineas}l</span></div></div>
+          <div style={S.clienteRight}>
+            {r.ren>0&&<span style={S.renBadge}>{r.ren} renov</span>}
+            {r.con>0&&<span style={S.conBadge}>{r.con} conc</span>}
+            {r.sug>0&&!completo&&<span style={S.sugBadge}>{r.sug} sug</span>}
+            <span style={{...S.estadoDot,background:completo?"#34d399":r.rev>0?"#fbbf24":"#475569"}}/>
+            <span style={S.clienteTotal}>{eur0(c.total)}</span></div></button>);})}</div>
+    </>)}
+
+    {cli&&(<div>
+      <div style={S.detailHead}><button onClick={()=>setSel(null)} style={S.back}>← Clientes</button>
+        <button onClick={()=>aceptarSug(cli)} style={S.acceptBtn}>✓ Aceptar sugerencias</button></div>
+      <div style={S.clienteTitulo}><div style={S.fichaCliente}>{cli.nombre}</div>
+        <div style={S.clienteMeta}><span style={S.codigo}>{cli.codigo}</span>{cli.nif&&<span style={S.nif}>{cli.nif}</span>}<span style={S.anios}>{eur0(cli.total)}</span></div></div>
+
+      {cli.facturas.map((f,fi)=>(<div key={fi} style={S.facturaCard}>
+        <div style={S.facturaHead}><span style={S.facturaFecha}>{f.fecha}</span><span style={S.facturaNum}>#{f.num}</span><span style={S.facturaTotal}>{eur(f.total)}</span></div>
+        {f.lineas.map(l=>{const m=marks[l.id];const a=m?m.a:null;const sug=!m&&l.sug;
+          const cls=a==="renov"?S.lineaRenov:a==="conciliar"?S.lineaConc:a==="no"?S.lineaNo:sug?S.lineaSug:{};
+          return(<div key={l.id} style={{...S.linea,...cls}}>
+            <div style={S.lineaTop}>
+              <div style={S.lineaDesc}><span style={S.descTxt}>{l.desc}</span>
+                {sug&&<span style={S.sugHint}>sugerido: {sugAccion(l.sug)==="renov"?(TIPOS[sugTipo(l.sug)]||"renov"):sugAccion(l.sug)}</span>}</div>
+              <span style={S.lineaImporte}>{eur(l.importe)}</span>
+              <div style={S.lineaAcciones}>
+                <button onClick={()=>a==="renov"?clearMark(l.id):setMark(l.id,{a:"renov",t:m?.t||sugTipo(l.sug)||"otro",estado:m?.estado||"activo"})} style={{...S.markBtn,...(a==="renov"?S.bRenov:{})}}>Renov</button>
+                <button onClick={()=>a==="conciliar"?clearMark(l.id):setMark(l.id,{a:"conciliar"})} style={{...S.markBtn,...(a==="conciliar"?S.bConc:{})}}>Conciliar</button>
+                <button onClick={()=>a==="no"?clearMark(l.id):setMark(l.id,{a:"no"})} style={{...S.markBtn,...(a==="no"?S.bNo:{})}}>No</button>
+              </div>
+            </div>
+            {a==="renov"&&(<div style={S.extra}>
+              <select value={m.t||"otro"} onChange={e=>setMark(l.id,{t:e.target.value})} style={S.tipoSelect}>
+                {Object.entries(TIPOS).map(([k,v])=><option key={k} value={k} style={S.option}>{v}</option>)}</select>
+              <label style={S.extraField}><span style={S.extraLbl}>Usado hasta</span>
+                <input type="date" value={m.hasta||""} onChange={e=>setMark(l.id,{hasta:e.target.value||null})} style={S.dateInput}/></label>
+              <div style={S.estadoToggle}>
+                <button onClick={()=>setMark(l.id,{estado:"activo"})} style={{...S.estBtn,...(m.estado!=="baja"?S.estOn:{})}}>Activo</button>
+                <button onClick={()=>setMark(l.id,{estado:"baja"})} style={{...S.estBtn,...(m.estado==="baja"?S.estBajaOn:{})}}>Baja</button></div>
+            </div>)}
+            {a==="conciliar"&&(<div style={S.extra}>
+              <label style={S.extraField}><span style={S.extraLbl}>Mayorista</span>
+                <input value={m.may||""} onChange={e=>setMark(l.id,{may:e.target.value})} placeholder="ESPRINET / INFORTISA…" style={S.txtInput}/></label>
+              <span style={S.concHint}>queda en bolsa hasta cruzar con pedidos</span>
+            </div>)}
+          </div>);})}
+      </div>))}
+    </div>)}
+
+    <footer style={S.footer}>3 marcas: Renovación (recurrente, con uso_hasta + estado) · Conciliar (tóner ↔ pedidos mayorista) · No facturable · Incidencias y pedidos = imports aparte</footer>
+  </div>);
+}
+
+const CSS=`*{box-sizing:border-box;}::-webkit-scrollbar{width:8px;height:8px;}::-webkit-scrollbar-thumb{background:rgba(148,163,184,.3);border-radius:4px;}button{font-family:inherit;cursor:pointer;transition:all .12s ease;}select,input,textarea{font-family:inherit;}`;
+
+const S={
+  app:{fontFamily:"'DM Sans',system-ui,sans-serif",background:"linear-gradient(160deg,#0b1120,#0f172a 60%,#131c31)",color:"#e2e8f0",minHeight:"100%",padding:24,borderRadius:16},
+  loading:{padding:40,color:"#94a3b8",fontFamily:"system-ui"},
+  header:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,gap:16,flexWrap:"wrap"},
+  h1:{margin:0,fontSize:22,fontWeight:700,letterSpacing:"-.02em",background:"linear-gradient(90deg,#fff,#94a3b8)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"},
+  sub:{margin:"4px 0 0",fontSize:13,color:"#64748b"},
+  exportBtn:{background:"rgba(96,165,250,.12)",border:"1px solid rgba(96,165,250,.3)",color:"#60a5fa",fontSize:13,fontWeight:600,padding:"8px 14px",borderRadius:9},
+  progressWrap:{display:"flex",alignItems:"center",gap:12,marginBottom:12},
+  progressBar:{flex:1,height:8,background:"rgba(148,163,184,.12)",borderRadius:4,overflow:"hidden"},
+  progressFill:{height:"100%",background:"linear-gradient(90deg,#34d399,#60a5fa)",borderRadius:4,transition:"width .3s ease"},
+  progressTxt:{fontSize:12,color:"#94a3b8",whiteSpace:"nowrap"},
+  bolsas:{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"},
+  bolsa:{fontSize:11,color:"#64748b",background:"rgba(148,163,184,.07)",border:"1px dashed rgba(148,163,184,.2)",padding:"5px 10px",borderRadius:7},
+  card:{background:"rgba(30,41,59,.5)",border:"1px solid rgba(148,163,184,.12)",borderRadius:14,padding:16,marginBottom:16},
+  cardTitle:{fontSize:12,fontWeight:700,textTransform:"uppercase",letterSpacing:".06em",color:"#64748b",marginBottom:12},
+  exportArea:{width:"100%",minHeight:180,background:"rgba(15,23,42,.7)",border:"1px solid rgba(148,163,184,.2)",borderRadius:8,color:"#9ca3af",fontFamily:"monospace",fontSize:11,padding:10,resize:"vertical"},
+  toolbar:{display:"flex",gap:10,alignItems:"center",marginBottom:14,flexWrap:"wrap"},
+  search:{flex:1,minWidth:200,background:"rgba(15,23,42,.6)",border:"1px solid rgba(148,163,184,.18)",borderRadius:10,color:"#e2e8f0",padding:"9px 14px",fontSize:14},
+  filtros:{display:"flex",gap:6,flexWrap:"wrap"},
+  chip:{background:"rgba(30,41,59,.6)",border:"1px solid rgba(148,163,184,.15)",color:"#94a3b8",fontSize:12,fontWeight:600,padding:"6px 12px",borderRadius:18},
+  chipActive:{background:"rgba(96,165,250,.15)",borderColor:"#60a5fa",color:"#fff"},
+  count:{fontSize:12,color:"#64748b"},
+  listaWrap:{display:"flex",flexDirection:"column",gap:6},
+  clienteRow:{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,background:"rgba(30,41,59,.4)",border:"1px solid rgba(148,163,184,.1)",borderRadius:11,padding:"12px 14px",textAlign:"left",width:"100%"},
+  clienteInfo:{minWidth:0},
+  clienteNombre:{fontSize:14,fontWeight:700,color:"#f1f5f9",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"},
+  clienteMeta:{display:"flex",gap:8,marginTop:3,alignItems:"center",flexWrap:"wrap"},
+  codigo:{fontSize:11,fontFamily:"monospace",color:"#64748b",background:"rgba(148,163,184,.1)",padding:"2px 6px",borderRadius:5},
+  nif:{fontSize:11,fontFamily:"monospace",color:"#a78bfa"},
+  anios:{fontSize:11,color:"#64748b"},lineCount:{fontSize:11,color:"#475569"},
+  clienteRight:{display:"flex",alignItems:"center",gap:8,whiteSpace:"nowrap"},
+  renBadge:{fontSize:10,fontWeight:700,color:"#34d399",background:"rgba(52,211,153,.12)",padding:"2px 6px",borderRadius:5},
+  conBadge:{fontSize:10,fontWeight:700,color:"#22d3ee",background:"rgba(34,211,238,.12)",padding:"2px 6px",borderRadius:5},
+  sugBadge:{fontSize:10,fontWeight:700,color:"#fbbf24",background:"rgba(251,191,36,.12)",padding:"2px 6px",borderRadius:5},
+  estadoDot:{width:9,height:9,borderRadius:"50%"},
+  clienteTotal:{fontSize:14,fontWeight:700,color:"#cbd5e1"},
+  detailHead:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12},
+  back:{background:"none",border:"none",color:"#60a5fa",fontSize:13,fontWeight:600,padding:0},
+  acceptBtn:{background:"rgba(52,211,153,.12)",border:"1px solid rgba(52,211,153,.3)",color:"#34d399",fontSize:12,fontWeight:600,padding:"7px 12px",borderRadius:8},
+  clienteTitulo:{marginBottom:16},fichaCliente:{fontSize:19,fontWeight:700,color:"#f1f5f9"},
+  facturaCard:{background:"rgba(30,41,59,.35)",border:"1px solid rgba(148,163,184,.1)",borderRadius:12,padding:12,marginBottom:10},
+  facturaHead:{display:"flex",alignItems:"center",gap:12,paddingBottom:8,marginBottom:8,borderBottom:"1px solid rgba(148,163,184,.1)"},
+  facturaFecha:{fontSize:12,fontFamily:"monospace",color:"#94a3b8"},facturaNum:{fontSize:12,fontFamily:"monospace",color:"#64748b"},
+  facturaTotal:{marginLeft:"auto",fontSize:13,fontWeight:700,color:"#cbd5e1"},
+  linea:{padding:"8px 10px",borderRadius:8,marginBottom:5,border:"1px solid transparent"},
+  lineaTop:{display:"grid",gridTemplateColumns:"1fr auto auto",gap:12,alignItems:"center"},
+  lineaRenov:{background:"rgba(52,211,153,.08)",borderColor:"rgba(52,211,153,.25)"},
+  lineaConc:{background:"rgba(34,211,238,.08)",borderColor:"rgba(34,211,238,.25)"},
+  lineaNo:{background:"rgba(148,163,184,.05)",opacity:.6},
+  lineaSug:{background:"rgba(251,191,36,.05)",borderColor:"rgba(251,191,36,.18)",borderStyle:"dashed"},
+  lineaDesc:{minWidth:0,display:"flex",flexDirection:"column",gap:2},
+  descTxt:{fontSize:13,color:"#e2e8f0"},sugHint:{fontSize:10,color:"#fbbf24",fontStyle:"italic"},
+  lineaImporte:{fontSize:13,fontWeight:700,color:"#cbd5e1",whiteSpace:"nowrap"},
+  lineaAcciones:{display:"flex",gap:5,alignItems:"center"},
+  markBtn:{background:"rgba(15,23,42,.6)",border:"1px solid rgba(148,163,184,.2)",color:"#94a3b8",fontSize:11,fontWeight:600,padding:"5px 9px",borderRadius:7},
+  bRenov:{background:"rgba(52,211,153,.2)",borderColor:"#34d399",color:"#34d399"},
+  bConc:{background:"rgba(34,211,238,.2)",borderColor:"#22d3ee",color:"#22d3ee"},
+  bNo:{background:"rgba(148,163,184,.15)",borderColor:"#94a3b8",color:"#e2e8f0"},
+  extra:{display:"flex",gap:10,alignItems:"center",marginTop:8,paddingTop:8,borderTop:"1px solid rgba(148,163,184,.1)",flexWrap:"wrap"},
+  tipoSelect:{background:"rgba(15,23,42,.8)",border:"1px solid rgba(52,211,153,.4)",borderRadius:7,color:"#34d399",padding:"5px 6px",fontSize:12,fontWeight:600},
+  extraField:{display:"flex",alignItems:"center",gap:6},
+  extraLbl:{fontSize:11,color:"#94a3b8"},
+  dateInput:{background:"rgba(15,23,42,.8)",border:"1px solid rgba(148,163,184,.25)",borderRadius:7,color:"#e2e8f0",padding:"4px 8px",fontSize:12},
+  txtInput:{background:"rgba(15,23,42,.8)",border:"1px solid rgba(34,211,238,.35)",borderRadius:7,color:"#e2e8f0",padding:"5px 8px",fontSize:12,width:170},
+  estadoToggle:{display:"flex",gap:0,borderRadius:7,overflow:"hidden",border:"1px solid rgba(148,163,184,.2)"},
+  estBtn:{background:"rgba(15,23,42,.6)",border:"none",color:"#94a3b8",fontSize:11,fontWeight:600,padding:"5px 10px"},
+  estOn:{background:"rgba(52,211,153,.2)",color:"#34d399"},
+  estBajaOn:{background:"rgba(251,146,60,.2)",color:"#fb923c"},
+  concHint:{fontSize:11,color:"#22d3ee",fontStyle:"italic"},
+  option:{background:"#0f172a",color:"#e2e8f0"},
+  dlBtn:{background:"rgba(52,211,153,.15)",border:"1px solid rgba(52,211,153,.35)",color:"#34d399",fontSize:12,fontWeight:600,padding:"6px 12px",borderRadius:8},
+  footer:{marginTop:20,paddingTop:14,borderTop:"1px solid rgba(148,163,184,.1)",fontSize:11,color:"#475569",lineHeight:1.6},
+};
+
+
+function App(){
+  const {useState,useEffect}=React;
+  const [data,setData]=useState(null);
+  const [err,setErr]=useState(null);
+  useEffect(()=>{
+    fetch("./renovaciones_data.json").then(r=>{if(!r.ok)throw new Error("No se pudo cargar renovaciones_data.json ("+r.status+")");return r.json();})
+      .then(setData).catch(e=>setErr(e.message));
+  },[]);
+  if(err)return React.createElement("div",{style:{padding:40,fontFamily:"system-ui",color:"#f87171"}},
+    "Error: "+err+" — ¿estás sirviendo la carpeta con un servidor (php -S localhost:8000)? Abrir el HTML con doble clic no funciona por seguridad del navegador.");
+  if(!data)return React.createElement("div",{style:{padding:40,fontFamily:"system-ui",color:"#94a3b8"}},"Cargando datos…");
+  return React.createElement(MarcadoRenovaciones,{data});
+}
+const {useState,useEffect,useMemo}=React;
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.pyc
+
+# Editor / herramientas locales
+.claude/
+.playwright-mcp/
+
+# Temporales
+*.tmp
+*.log

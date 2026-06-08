@@ -1,0 +1,666 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Renovaciones — decisión de servicios</title>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  :root{--ok:#107c41;--okbg:#dff3e4;--warn:#9a6700;--warnbg:#fff4ce;--bad:#c42b1c;
+        --line:#e1e4e8;--ink:#1b1b1b;--mut:#5a5a5a;--blue:#005fb8;--blue2:#0067c0}
+  *{box-sizing:border-box}
+  body{font:15.5px/1.5 "Segoe UI Variable Text","Segoe UI",system-ui,Arial;margin:0;color:var(--ink);background:#f3f3f3}
+  .topbar{position:sticky;top:0;z-index:10}
+  header{background:var(--blue);color:#fff;padding:16px 22px}
+  header h1{margin:0;font-size:22px;font-weight:600}
+  .kpis{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}
+  .kpis div{background:rgba(255,255,255,.16);border-radius:8px;padding:9px 15px;font-size:14px}
+  .kpis b{font-size:25px;display:block}
+  .bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:12px 22px;background:#fff;
+       border-bottom:1px solid var(--line)}
+  .bar input,.bar select{padding:8px 11px;border:1px solid #bcbcbc;border-radius:7px;font:inherit}
+  .bar input[type=search]{min-width:240px}
+  .btn{padding:9px 16px;border:1px solid #bcbcbc;background:#fff;border-radius:7px;cursor:pointer;font:inherit;font-weight:500}
+  .btn:hover{background:#f0f0f0}
+  .btn.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .btn.primary:hover{background:var(--blue2)}
+  main{padding:18px 22px 90px}
+  .help-box{margin:0 0 6px;border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden}
+  .help-box>summary{cursor:pointer;padding:12px 16px;font-weight:600;font-size:15.5px;list-style:none;background:#eef4fb;color:var(--blue)}
+  .help-box[open]>summary{border-bottom:1px solid var(--line)}
+  .help-grid{padding:14px 16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px 22px;font-size:14px}
+  .help-grid b{color:var(--blue)}
+  .cli{margin-top:20px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .cli>h2{margin:0;font-size:16px;padding:12px 16px;background:#eef4fb;border-bottom:1px solid var(--line);
+          display:flex;justify-content:space-between;align-items:center}
+  .cli>h2 .cod{color:#777;font-weight:400;font-size:13.5px}
+  .cli.rev{opacity:.92}
+  .cli.rev>h2{background:#e6f4ea;border-left:4px solid var(--ok)}
+  .cli-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .cli-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .cli-actions select{padding:6px 9px;border:1px solid #bcbcbc;border-radius:7px;font:inherit;font-size:14px}
+  .caret{border:0;background:none;cursor:pointer;font-size:16px;color:var(--blue);padding:0 4px;line-height:1}
+  .b-est{font-weight:600}
+  .est-hablar{color:#9a3412;border-color:#9a3412;background:#ffedd5}
+  .est-pdte_fact{color:#9a6700;border-color:#9a6700;background:var(--warnbg)}
+  .est-facturado{color:#1e40af;border-color:#1e40af;background:#dbeafe}
+  .est-terminado{color:var(--ok);border-color:var(--ok);background:var(--okbg)}
+  .chk.ofr{padding-top:0;font-size:13.5px;background:#f3eefb;border:1px solid #e2d6f5;border-radius:7px;padding:5px 9px}
+  .srv{padding:13px 16px;border-bottom:1px solid #eef0f2}
+  .srv:last-child{border-bottom:0}
+  .srv.decided{background:#f7fbf8}
+  .row1{display:flex;gap:11px;align-items:center;flex-wrap:wrap}
+  .tipo{font-weight:600;min-width:220px;font-size:16px}
+  .badge{font-size:12.5px;padding:2px 9px;border-radius:11px;border:1px solid;font-weight:500}
+  .b-kd{color:var(--warn);border-color:var(--warn);background:var(--warnbg)}
+  .b-rec{color:var(--ok);border-color:var(--ok);background:var(--okbg)}
+  .b-man{color:#5b21b6;border-color:#5b21b6;background:#ede9fe}
+  .b-cli{color:#0369a1;border-color:#0369a1;background:#e0f2fe}
+  .lineas{margin:5px 0 0;display:flex;flex-wrap:wrap;gap:5px 9px}
+  .ln{font-size:13px;color:#666;background:#f5f6f8;border:1px solid #eaecef;border-radius:5px;
+      padding:2px 8px;max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:help}
+  .chk{display:flex;align-items:center;gap:7px;font-size:14px;color:var(--ink);padding-top:5px}
+  .chk input{width:auto;transform:scale(1.2)}
+  .inline-f{display:inline-flex;align-items:center;gap:5px;background:#eef4fb;border-radius:7px;padding:3px 8px}
+  .inline-f input{padding:5px 7px;border:1px solid #bcbcbc;border-radius:6px;font:inherit}
+  .lineas-full{display:flex;flex-direction:column;gap:4px}
+  .lnf{font-size:14px;color:#3a3a3a;background:#fff;border:1px solid var(--line);border-radius:6px;padding:6px 10px;word-break:break-word}
+  .lnf b{color:var(--blue)}
+  .ygrid{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px}
+  .yc{display:flex;flex-direction:column;align-items:center;gap:3px;border:1px solid var(--line);
+      border-radius:8px;padding:6px 9px;min-width:92px;background:#fff}
+  .yc-a{font-weight:700;font-size:13.5px;color:var(--blue)}
+  .yc-v{font-size:14px;font-weight:600}
+  .yc-tag{font-size:10.5px;color:var(--ok);text-transform:uppercase;letter-spacing:.3px}
+  .yc-hist{background:var(--okbg);border-color:#bfe3c9}
+  .yc-hist .yc-v{color:var(--ok)}
+  .yc-na{opacity:.5;background:#f6f7f8}
+  .yc-na .yc-v{color:#aaa}
+  .yc-pend{background:#fff}
+  .yc-pend.si{background:#eaf6ee;border-color:var(--ok)}
+  .yc-pend.no{background:#fdeeec;border-color:var(--bad)}
+  .yc-imp{width:74px;text-align:right;padding:4px 6px;border:1px solid #bcbcbc;border-radius:6px;font:inherit;font-size:13px}
+  .yc-seg{height:auto}
+  .yc-seg button{padding:4px 11px;font-size:13px}
+  .yc-seg button:first-child[aria-pressed=true]{background:var(--ok)}
+  .yc-seg button:last-child[aria-pressed=true]{background:var(--bad)}
+  .est{font-size:13.5px;color:var(--mut)}
+  .est.venc{color:var(--bad);font-weight:600}
+  .est.hueco{color:var(--warn);font-weight:600}
+  .seg{display:inline-flex;border:1px solid #bcbcbc;border-radius:7px;overflow:hidden}
+  .seg button{border:0;background:#fff;padding:8px 13px;cursor:pointer;font:inherit;font-size:14px;border-right:1px solid #e6e6e6}
+  .seg button:last-child{border-right:0}
+  .seg button:hover{background:#f0f0f0}
+  .seg button[aria-pressed=true]{color:#fff}
+  .seg.dec button[aria-pressed=true]{background:var(--blue)}
+  .seg.act button[aria-pressed=true]{background:var(--ok)}
+  .lbl{font-size:13px;color:var(--mut);margin-right:4px}
+  .ficha{margin-top:11px;padding:13px;background:#f8fafc;border:1px solid var(--line);border-radius:9px;
+         display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:13px}
+  .ficha label{display:block;font-size:13px;color:var(--mut);margin-bottom:3px;font-weight:500}
+  .ficha input,.ficha select,.ficha textarea{width:100%;padding:8px 10px;border:1px solid #bcbcbc;border-radius:7px;font:inherit}
+  .ficha textarea{resize:vertical;min-height:40px}
+  .link{background:none;border:0;color:var(--blue);cursor:pointer;font:inherit;text-decoration:underline;padding:0}
+  .help{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;
+        background:var(--blue);color:#fff;font-size:11px;font-weight:700;cursor:help;margin-left:5px;font-style:normal}
+  .tareas{position:fixed;right:0;bottom:0;width:380px;max-height:48vh;overflow:auto;background:#fff;
+          border:1px solid var(--line);border-radius:12px 0 0 0;box-shadow:0 -3px 16px rgba(0,0,0,.16);z-index:20}
+  .tareas h3{margin:0;padding:11px 14px;font-size:15px;background:#fde7e9;border-bottom:1px solid var(--line)}
+  .tareas ul{margin:0;padding:8px 14px;list-style:none}
+  .tareas li{font-size:13.5px;padding:7px 0;border-bottom:1px solid #f0f0f0;overflow:hidden}
+  .tareas .t-tipo{font-weight:600;color:var(--bad)}
+  .t-fecha{float:right;font-size:12.5px;font-weight:600;color:var(--mut);background:#eef0f2;border-radius:5px;padding:1px 7px}
+  .t-fecha.t-soon{color:var(--warn);background:var(--warnbg)}
+  .t-fecha.t-over{color:#fff;background:var(--bad)}
+  .t-nota{display:block;width:100%;margin-top:5px;padding:5px 8px;border:1px solid #d0d4d8;border-radius:6px;font:inherit;font-size:13px}
+  .t-nota:focus{border-color:var(--blue);outline:none}
+  .tareas h3{display:flex;justify-content:space-between;align-items:center}
+  .t-head-actions{display:flex;align-items:center;gap:10px;font-weight:400}
+  .t-row1{display:flex;align-items:center;gap:6px}
+  .t-titulo{flex:1;min-width:0;padding:4px 7px;border:1px solid #d0d4d8;border-radius:6px;font:inherit;font-size:13px;font-weight:600;color:var(--bad)}
+  .t-fecha-ed{width:135px;padding:4px 6px;border:1px solid #d0d4d8;border-radius:6px;font:inherit;font-size:12px}
+  .t-fecha-ed.t-soon{border-color:var(--warn);background:var(--warnbg)}
+  .t-fecha-ed.t-over{border-color:var(--bad);background:#fdeeec;color:var(--bad);font-weight:600}
+  .t-del{border:0;background:none;color:#aaa;cursor:pointer;font-size:14px;padding:2px 4px}
+  .t-del:hover{color:var(--bad)}
+  .t-ctx{font-size:12px;color:var(--mut);margin-top:3px}
+  .tareas li.done{opacity:.55}
+  .tareas li.done .t-titulo{text-decoration:line-through;color:var(--mut);font-weight:400}
+  .muted{color:var(--mut)}
+  .add{font-size:14px}
+  .seg.vista button[aria-pressed=true]{background:var(--blue);color:#fff}
+  .resumen{padding-bottom:40px}
+  .res-kpis{display:flex;gap:12px;flex-wrap:wrap;margin:4px 0 6px}
+  .res-kpis div{background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px 16px;font-size:13px}
+  .res-kpis b{display:block;font-size:22px;color:var(--blue)}
+  .res-cli{margin-top:14px}
+  .res-total{font-weight:700;color:var(--ok);background:var(--okbg);border-radius:7px;padding:3px 10px;font-size:14px}
+  .res-list{list-style:none;margin:0;padding:0}
+  .res-list li{padding:9px 16px;border-bottom:1px solid #f0f0f0}
+  .res-list li:last-child{border-bottom:0}
+  .res-list li.done{opacity:.55}
+  li.done .t-titulo{text-decoration:line-through;color:var(--mut);font-weight:400}
+  .res-list .t-titulo{color:var(--ink)}
+  .res-list .t-ctx{margin-left:26px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>window.PAYLOAD = /*__DATA__*/;</script>
+<script type="text/babel" data-presets="react">
+const {useState, useMemo, useEffect} = React;
+const PAYLOAD = window.PAYLOAD;
+const HOY = PAYLOAD.hoy;
+const ANIOS = PAYLOAD.anios;
+const DOMINIOS = PAYLOAD.dominios || [];
+const DOM_BY = {}; DOMINIOS.forEach(d=>DOM_BY[d.dom]=d);
+
+const K_MARKS = "renov:servicios:v1";
+const K_TOOLS = "renov:herramientas:v1";
+const K_MAN   = "renov:manuales:v1";
+const K_TNOTAS = "renov:tareasnotas:v1";
+const K_CMETA = "renov:clientes:v1";
+const K_TOV = "renov:tareasedit:v1";
+const K_TMAN = "renov:tareasman:v1";
+
+const DECISIONES = [
+  ["renovar_todos","Renovar todos los años","El servicio se factura cada año de forma indefinida."],
+  ["renovar_x","Renovar X años","Se renueva un número concreto de años y luego se para. Indica cuántos."],
+  ["pendiente","Pendiente cliente","Esperamos respuesta del cliente. Pon una fecha límite: si pasa sin decidir, se cierra."],
+  ["no_renovar","No renovar (eliminar)","No se renueva. En web: dejar caducar el dominio. En otros: backup y dar de baja."],
+];
+const CLI_ESTADOS = [
+  ["","— estado —"],
+  ["hablar","Hablar con el cliente"],
+  ["pdte_fact","Pendiente de facturar"],
+  ["facturado","Facturado"],
+  ["terminado","Terminado"],
+];
+const ACTIVADO = [["si","Sí","El servicio está instalado y activo ahora mismo."],
+                  ["no","No","El servicio no está activo."],
+                  ["verificar","Verificar","Hay que comprobarlo (dominio en Plesk, instancia de Getradi, etc.)."]];
+const PERIODICIDAD = [["anual","Anual"],["mensual","Mensual"],["puntual","Puntual"]];
+
+// dd/mm/yyyy desde ISO (yyyy-mm-dd)
+function fmt(iso){ if(!iso||String(iso).length<10) return iso||""; const p=String(iso).slice(0,10).split("-"); return p[2]+"/"+p[1]+"/"+p[0]; }
+// icono de ayuda con tooltip nativo
+function Help({t}){ return <span className="help" title={t} role="img" aria-label={"Ayuda: "+t}>i</span>; }
+// importe de un año (en datos las claves son string)
+function impAnio(s,a){ const x=s.anios||{}; return x[a]||x[String(a)]||0; }
+// años facturables: desde 'desde_anio' en adelante y sin factura historica
+function aniosFacturables(s){ const d=s.desde_anio||9999; return ANIOS.filter(a=> a>=d && !impAnio(s,a)); }
+// ¿el servicio tiene alguna decisión tomada?
+function esDecidido(s,m){ const ay=m.ay||{}; return aniosFacturables(s).some(a=> ay[String(a)] && ay[String(a)].f) || !!m.ofrecer; }
+// aniversario: mismo dia/mes que la ultima factura pero en el año dado
+function aniversario(ultimaISO, anio){
+  if(ultimaISO && ultimaISO.length>=10){ return anio+"-"+ultimaISO.slice(5,10); }
+  return anio+"-12-31";
+}
+// fecha limite "pronto" (60 dias desde hoy)
+const SOON = (()=>{ const t=new Date(HOY); t.setDate(t.getDate()+60); return t.toISOString().slice(0,10); })();
+
+// fila de tarea editable (reutilizada en agenda y en resumen por cliente)
+function TaskRow({t, nota, setNota, edit, del, ctx}){
+  const cls = (t.hecho||!t.fecha) ? "" : (t.fecha < HOY ? "t-over" : (t.fecha < SOON ? "t-soon" : ""));
+  return (
+    <li className={t.hecho?"done":""}>
+      <span className="t-row1">
+        <input type="checkbox" title="Marcar hecha" checked={t.hecho} onChange={e=>edit({hecho:e.target.checked})} />
+        <input className="t-titulo" value={t.titulo} onChange={e=>edit({titulo:e.target.value})} />
+        <input className={"t-fecha-ed "+cls} type="date" value={t.fecha||""} onChange={e=>edit({fecha:e.target.value})} />
+        <button className="t-del" title={t.manual?"Borrar":"Ocultar"} onClick={del}>✕</button>
+      </span>
+      {ctx!==false && (t.cli||t.srv) && <div className="t-ctx">{ctx===true?t.srv:(t.cli+(t.srv?" — "+t.srv:""))}</div>}
+      <input className="t-nota" placeholder="+ nota…" value={nota} onChange={e=>setNota(e.target.value)} />
+    </li>
+  );
+}
+
+function load(key, def){ try{ return JSON.parse(localStorage.getItem(key)) ?? def; }catch(e){ return def; } }
+function save(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+
+function App(){
+  const [marks, setMarks]   = useState(()=>load(K_MARKS, {}));
+  const [tools, setTools]   = useState(()=>load(K_TOOLS, ["Getradi","Dolibarr"]));
+  const [manual, setManual] = useState(()=>load(K_MAN, []));
+  const [tnotas, setTnotas] = useState(()=>load(K_TNOTAS, {}));
+  const [cmeta, setCmeta]   = useState(()=>load(K_CMETA, {}));
+  const [tov, setTov]       = useState(()=>load(K_TOV, {}));
+  const [tman, setTman]     = useState(()=>load(K_TMAN, []));
+  const [verHechas, setVerHechas] = useState(false);
+  const [vista, setVista]   = useState("servicios");
+  const [q, setQ]           = useState("");
+  const [fDec, setFDec]     = useState("");
+  const [fOrig, setFOrig]   = useState("");
+  const [fEst, setFEst]     = useState("");
+  const [ocultarRev, setOcultarRev] = useState(false);
+  const [open, setOpen]     = useState({});
+
+  useEffect(()=>save(K_MARKS, marks), [marks]);
+  useEffect(()=>save(K_TOOLS, tools), [tools]);
+  useEffect(()=>save(K_MAN, manual), [manual]);
+  useEffect(()=>save(K_TNOTAS, tnotas), [tnotas]);
+  useEffect(()=>save(K_CMETA, cmeta), [cmeta]);
+  useEffect(()=>save(K_TOV, tov), [tov]);
+  useEffect(()=>save(K_TMAN, tman), [tman]);
+
+  const cm = (cod)=> cmeta[cod] || {};
+  const setCM = (cod, patch)=> setCmeta(c=>({...c, [cod]: {...(c[cod]||{}), ...patch}}));
+  const setTO = (key, patch)=> setTov(o=>({...o, [key]: {...(o[key]||{}), ...patch}}));
+  const setMan = (key, patch)=> setTman(ts=>ts.map(t=>t.key===key?{...t, ...patch}:t));
+  function editTarea(t, patch){ t.manual ? setMan(t.key, patch) : setTO(t.key, patch); }
+  function addTarea(){
+    const titulo = prompt("Nueva tarea:"); if(!titulo) return;
+    setTman(ts=>[...ts, {key:"TMAN__"+Date.now(), titulo, fecha:"", cli:"", srv:"", manual:true}]);
+  }
+  function borrarTarea(t){ if(t.manual) setTman(ts=>ts.filter(x=>x.key!==t.key)); else setTO(t.key,{oculta:true}); }
+
+  const todos = useMemo(()=>[...PAYLOAD.servicios, ...manual], [manual]);
+
+  const setMark = (id, patch)=> setMarks(m=>({...m, [id]: {...(m[id]||{}), ...patch}}));
+
+  const filtrados = useMemo(()=>{
+    const t = q.trim().toLowerCase();
+    return todos.filter(s=>{
+      if(t && !(s.cliente.toLowerCase().includes(t) || s.tipo.toLowerCase().includes(t) || (s.codigo||"").includes(t))) return false;
+      const dec = esDecidido(s, marks[s.id]||{});
+      if(fDec==="__sin" && dec) return false;
+      if(fDec==="__si" && !dec) return false;
+      if(fOrig && s.origen!==fOrig) return false;
+      return true;
+    });
+  }, [todos, q, fDec, fOrig, marks]);
+
+  const grupos = useMemo(()=>{
+    const g = {};
+    filtrados.forEach(s=>{ (g[s.codigo] = g[s.codigo] || {cliente:s.cliente, codigo:s.codigo, items:[]}).items.push(s); });
+    return Object.values(g)
+      .filter(grp=>{ const v = cmeta[grp.codigo]||{};
+        if(ocultarRev && v.revisado) return false;
+        if(fEst && (v.estado||"")!==fEst) return false;
+        return true; })
+      .sort((a,b)=>a.cliente.localeCompare(b.cliente));
+  }, [filtrados, cmeta, ocultarRev, fEst]);
+
+  const nDecididos = todos.filter(s=>esDecidido(s, marks[s.id]||{})).length;
+  const codigosTodos = useMemo(()=>[...new Set(todos.map(s=>s.codigo))], [todos]);
+  const nRevisados = codigosTodos.filter(c=>(cmeta[c]||{}).revisado).length;
+  const colapsarTodo = (val)=> setCmeta(c=>{ const n={...c}; codigosTodos.forEach(cod=>{ n[cod]={...(n[cod]||{}), collapsed:val}; }); return n; });
+
+  const tareas = useMemo(()=>{
+    const out=[];
+    todos.forEach(s=>{
+      const m = marks[s.id]||{};
+      const ay = m.ay||{};
+      const d = DOM_BY[m.dominio||""];
+      const dlabel = m.dominio ? (m.dominio + (d?" ("+d.prov+")":"")) : s.tipo;
+      const fact = aniosFacturables(s);
+      let haySi=false, hayNo=false;
+      fact.forEach(a=>{
+        const y = ay[String(a)]||{};
+        if(y.f==="si"){ haySi=true;
+          const imp = (y.imp!=null && y.imp!=="") ? y.imp : s.importe_sug;
+          out.push({key:s.id+"::fact"+a, codigo:s.codigo, cat:"facturar", importe:(Math.round(imp)||0),
+                    tipo:"Facturar "+a+" · "+(Math.round(imp)||0)+" €",
+                    cli:s.cliente, srv:s.tipo+(s.categoria==="web"&&m.dominio?" ("+m.dominio+")":""),
+                    fecha:aniversario(m.uso_hasta||s.ultima_fecha, a)});
+        }
+        if(y.f==="no") hayNo=true;
+      });
+      // web con dominio que se deja caducar (todos los años a No, ninguno a Sí)
+      if(s.categoria==="web" && m.dominio && hayNo && !haySi)
+        out.push({key:s.id+"::norenovdom", codigo:s.codigo, cat:"dominio", importe:0, tipo:"No renovar dominio — dejar caducar", cli:s.cliente, srv:dlabel, fecha:(d?d.expira_iso:"")});
+      if(m.ofrecer) out.push({key:s.id+"::ofrecer", codigo:s.codigo, cat:"ofrecer", importe:0, tipo:"Ofrecer mantenimiento / bonos", cli:s.cliente, srv:s.tipo, fecha:m.uso_hasta||""});
+    });
+    out.sort((a,b)=> (a.fecha||"9999-99") < (b.fecha||"9999-99") ? -1 : 1);
+    return out;
+  }, [todos, marks]);
+
+  const tareasRender = useMemo(()=>{
+    const gen = tareas.map(t=>{ const o = tov[t.key]||{};
+      return {...t, manual:false, oculta:!!o.oculta, hecho:!!o.hecho,
+              titulo: o.titulo!=null?o.titulo:t.tipo, fecha: o.fecha!=null?o.fecha:(t.fecha||"")}; });
+    const man = (tman||[]).map(t=>({...t, manual:true, oculta:false, hecho:!!t.hecho,
+              titulo:t.titulo||"", fecha:t.fecha||"", cli:t.cli||"", srv:t.srv||""}));
+    return [...gen, ...man]
+      .filter(t=> !t.oculta && (verHechas || !t.hecho))
+      .sort((a,b)=> (a.hecho?1:0)-(b.hecho?1:0) || ((a.fecha||"9999")<(b.fecha||"9999")?-1:1));
+  }, [tareas, tov, tman, verHechas]);
+  const nActivas = tareasRender.filter(t=>!t.hecho).length;
+
+  const resumen = useMemo(()=>{
+    const g = {};
+    tareasRender.forEach(t=>{
+      const cod = t.codigo || "__gen";
+      const nom = t.codigo ? t.cli : "Tareas generales";
+      const grp = g[cod] = g[cod] || {codigo:t.codigo||"", cliente:nom, items:[], total:0, prox:""};
+      grp.items.push(t);
+      if(!t.hecho && t.cat==="facturar") grp.total += (t.importe||0);
+      if(!t.hecho && t.fecha && (!grp.prox || t.fecha < grp.prox)) grp.prox = t.fecha;
+    });
+    return Object.values(g).sort((a,b)=> (a.prox||"9999") < (b.prox||"9999") ? -1 : ((a.prox||"9999")>(b.prox||"9999")?1:a.cliente.localeCompare(b.cliente)));
+  }, [tareasRender]);
+  const totalFacturar = resumen.reduce((s,g)=>s+g.total,0);
+
+  function exportar(){
+    const dec = todos.filter(s=>marks[s.id] || s.origen==="Manual").map(s=>{
+      const m = marks[s.id]||{};
+      const dom = DOM_BY[m.dominio||""]||{};
+      const ay = m.ay||{};
+      const por_anio = {};
+      aniosFacturables(s).forEach(a=>{ const y=ay[String(a)]; if(y && (y.f||y.imp!=null))
+        por_anio[a] = {facturar:y.f||"", importe:(y.imp!=null&&y.imp!=="")?y.imp:(s.importe_sug||0)}; });
+      return {
+        codigo:s.codigo, cliente:s.cliente, tipo:m.tipo??s.tipo, categoria:s.categoria, origen:s.origen,
+        herramienta:m.herramienta||"", dominio:m.dominio||"",
+        hosting:m.hosting||dom.prov||"", dominio_expira:dom.expira||"",
+        lo_paga_cliente:!!m.lo_paga_cliente, ofrecer:!!m.ofrecer, activado:m.activado||"",
+        periodicidad:m.periodicidad||"anual", uso_hasta:m.uso_hasta||s.uso_hasta_def||"", nota:m.nota||"",
+        anios_facturados:s.anios||{}, anios_a_facturar:por_anio
+      };
+    });
+    const tareas_exp = tareasRender.map(t=>({titulo:t.titulo, fecha:t.fecha, cli:t.cli||"", srv:t.srv||"", hecho:!!t.hecho, manual:!!t.manual, nota:tnotas[t.key]||""}));
+    const clientes_exp = Object.entries(cmeta).filter(([k,v])=>v && (v.revisado||v.estado))
+      .map(([cod,v])=>({codigo:cod, revisado:!!v.revisado, estado:v.estado||""}));
+    const blob = new Blob([JSON.stringify({generado:HOY, decisiones:dec, tareas:tareas_exp, clientes:clientes_exp}, null, 2)], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "decisiones_renovaciones.json"; a.click();
+  }
+
+  function addTool(){
+    const n = prompt("Nueva herramienta:");
+    if(n && !tools.includes(n)) setTools([...tools, n]);
+  }
+
+  function addManual(codigo, cliente){
+    const tipo = prompt("Servicio (tipo):"); if(!tipo) return;
+    const id = "MAN__"+codigo+"__"+Date.now();
+    setManual(ms=>[...ms, {id, codigo, cliente, tipo, origen:"Manual",
+      anios:{}, kd_inicio:null, ultima_fecha:null, uso_hasta_def:"", importe_sug:0, estado:"alta manual"}]);
+    setOpen(o=>({...o,[id]:true}));
+  }
+
+  return (
+    <div>
+      <div className="topbar">
+      <header>
+        <h1>Renovaciones — decisión de servicios <span className="muted" style={{fontWeight:400,fontSize:13,color:"#cfe3f7"}}>jero_autonomo · {fmt(HOY)}</span></h1>
+        <div className="kpis">
+          <div><b>{todos.length}</b>servicios</div>
+          <div><b>{nDecididos}</b>decididos</div>
+          <div><b>{todos.length-nDecididos}</b>sin decidir</div>
+          <div><b>{nRevisados}/{codigosTodos.length}</b>clientes revisados</div>
+          <div><b>{nActivas}</b>tareas activas</div>
+        </div>
+      </header>
+
+      <div className="bar">
+        <input type="search" placeholder="Buscar cliente, código o servicio…" value={q} onChange={e=>setQ(e.target.value)} />
+        <select value={fDec} onChange={e=>setFDec(e.target.value)}>
+          <option value="">Servicios: todos</option>
+          <option value="__sin">Sin decidir</option>
+          <option value="__si">Decididos</option>
+        </select>
+        <select value={fOrig} onChange={e=>setFOrig(e.target.value)}>
+          <option value="">Origen: todos</option>
+          <option value="KD">KD</option>
+          <option value="Recurrente">Recurrente</option>
+          <option value="Manual">Manual</option>
+        </select>
+        <select value={fEst} onChange={e=>setFEst(e.target.value)}>
+          <option value="">Estado cliente: todos</option>
+          {CLI_ESTADOS.filter(([v])=>v).map(([v,l])=><option key={v} value={v}>{l}</option>)}
+        </select>
+        <label className="chk" style={{paddingTop:0}}><input type="checkbox" checked={ocultarRev} onChange={e=>setOcultarRev(e.target.checked)} /> Ocultar revisados</label>
+        <span className="seg vista" role="group" aria-label="Vista">
+          <button aria-pressed={vista==="servicios"} onClick={()=>setVista("servicios")}>Servicios</button>
+          <button aria-pressed={vista==="resumen"} onClick={()=>setVista("resumen")}>Resumen por cliente</button>
+        </span>
+        {vista==="servicios" && <button className="btn" onClick={()=>colapsarTodo(true)}>Contraer todo</button>}
+        {vista==="servicios" && <button className="btn" onClick={()=>colapsarTodo(false)}>Expandir todo</button>}
+        <span className="muted">{grupos.length} clientes</span>
+        <span style={{flex:1}}></span>
+        <button className="btn primary" onClick={exportar}>Descargar decisiones (JSON)</button>
+      </div>
+      </div>
+
+      <main>
+        {vista==="servicios" && <React.Fragment>
+        <details className="help-box">
+          <summary>¿Cómo funciona? — guía rápida</summary>
+          <div className="help-grid">
+            <div><b>Origen del servicio.</b> <span className="badge b-kd">KD</span> Kit Digital (lo pagó el bono; al vencer hay que facturar el recurrente). <span className="badge b-rec">Recurrente</span> ya facturado en años anteriores. <span className="badge b-man">Manual</span> dado de alta por ti.</div>
+            <div><b>Rejilla por año.</b> Cada servicio muestra una caja por año. <b>Verde "facturado"</b> = ya cobrado ese año (con su importe real). Gris "—" = el servicio aún no existía ese año.</div>
+            <div><b>Años a facturar.</b> En los años sin factura pones el <b>importe</b> y marcas <b>Sí/No</b> facturar. Cada "Sí" genera una tarea de facturación en la agenda. Así regularizas los años que faltan (2025, 2026, 2027).</div>
+            <div><b>Sin decisión global:</b> la decisión es por año. Para dejar caducar un dominio, marca sus años a <b>No</b> (en web con dominio genera la tarea de no renovar).</div>
+            <div><b>Líneas de factura.</b> Bajo cada servicio ves el texto original de la factura — útil para identificar qué es de verdad. La descripción completa está en la ficha.</div>
+            <div><b>Agenda (abajo dcha).</b> Las decisiones generan tareas ordenadas por fecha: 🔴 vencida, 🟡 &lt;60 días. Puedes <b>editar título y fecha</b>, marcar <b>hecha</b> (✓), <b>ocultar</b> (✕), añadir <b>nota</b> y crear tareas con <b>+ tarea</b>.</div>
+            <div><b>Guardado.</b> Todo se guarda solo en este navegador. Usa <b>Descargar decisiones (JSON)</b> para tener una copia.</div>
+            <div><b>Por cliente.</b> Con ▾/▸ contraes o expandes sus servicios. Marca <b>Revisado</b> cuando hayas terminado (se contrae solo) y elige su <b>estado</b>: hablar con él, pendiente de facturar, facturado o terminado.</div>
+            <div><b>Ofrecer mant./bonos</b> es un marcador <b>independiente</b> de la decisión: puede convivir con "renovar" o con regularizar años anteriores. Es para ofrecer mantenimiento, bonos de horas o facturar horas usadas.</div>
+            <div><b>El icono <span className="help">i</span></b> en cada campo muestra una ayuda al pasar el ratón.</div>
+          </div>
+        </details>
+        {grupos.map(g=>{
+          const v = cm(g.codigo);
+          const nDec = g.items.filter(s=>esDecidido(s, marks[s.id]||{})).length;
+          const est = CLI_ESTADOS.find(([x])=>x===(v.estado||""));
+          return (
+          <section className={"cli"+(v.revisado?" rev":"")} key={g.codigo}>
+            <h2>
+              <span className="cli-head">
+                <button className="caret" aria-label={v.collapsed?"Expandir":"Contraer"} onClick={()=>setCM(g.codigo,{collapsed:!v.collapsed})}>{v.collapsed?"▸":"▾"}</button>
+                <b>{g.cliente}</b> <span className="cod">{g.codigo}</span>
+                <span className="cod">· {nDec}/{g.items.length} decididos</span>
+                {v.revisado && <span className="badge b-rec">✓ revisado</span>}
+                {v.estado && est && <span className={"badge b-est est-"+v.estado}>{est[1]}</span>}
+              </span>
+              <span className="cli-actions">
+                <select value={v.estado||""} onChange={e=>setCM(g.codigo,{estado:e.target.value})} title="Estado de gestión del cliente">
+                  {CLI_ESTADOS.map(([x,l])=><option key={x} value={x}>{l}</option>)}
+                </select>
+                <label className="chk" style={{paddingTop:0}} title="Marca cuando hayas revisado todos sus servicios">
+                  <input type="checkbox" checked={!!v.revisado} onChange={e=>setCM(g.codigo,{revisado:e.target.checked, collapsed:e.target.checked})} /> Revisado
+                </label>
+                <button className="link add" onClick={()=>addManual(g.codigo, g.cliente)}>+ Añadir servicio</button>
+              </span>
+            </h2>
+            {!v.collapsed && g.items.map(s=>(
+              <Servicio key={s.id} s={s} m={marks[s.id]||{}} tools={tools} addTool={addTool}
+                        open={!!open[s.id]} toggle={()=>setOpen(o=>({...o,[s.id]:!o[s.id]}))}
+                        set={patch=>setMark(s.id, patch)} />
+            ))}
+          </section>
+          );
+        })}
+        {grupos.length===0 && <p className="muted">Nada que mostrar con estos filtros.</p>}
+        </React.Fragment>}
+
+        {vista==="resumen" && <div className="resumen">
+          <div className="res-kpis">
+            <div><b>{resumen.length}</b>clientes con acciones</div>
+            <div><b>{Math.round(totalFacturar).toLocaleString("es-ES")} €</b>total a facturar</div>
+            <div><b>{nActivas}</b>tareas activas</div>
+          </div>
+          <p className="muted" style={{fontSize:13,margin:"4px 0 12px"}}>Todo lo que hay que hacer por cada cliente, ordenado por la fecha más próxima. Las acciones son editables (mismas que en la agenda).</p>
+          {resumen.length===0 && <p className="muted">Aún no hay acciones. Marca años a facturar, "Ofrecer mant./bonos" o crea tareas.</p>}
+          {resumen.map(g=>{
+            const v = g.codigo ? cm(g.codigo) : {};
+            const est = CLI_ESTADOS.find(([x])=>x===(v.estado||""));
+            return (
+            <section className="cli res-cli" key={g.codigo||"__gen"}>
+              <h2>
+                <span className="cli-head">
+                  <b>{g.cliente}</b> {g.codigo && <span className="cod">{g.codigo}</span>}
+                  {v.estado && est && <span className={"badge b-est est-"+v.estado}>{est[1]}</span>}
+                  {v.revisado && <span className="badge b-rec">✓ revisado</span>}
+                </span>
+                <span className="cli-actions">
+                  {g.total>0 && <span className="res-total">A facturar: {Math.round(g.total).toLocaleString("es-ES")} €</span>}
+                  <span className="cod">{g.items.filter(t=>!t.hecho).length} acciones</span>
+                </span>
+              </h2>
+              <ul className="res-list">
+                {g.items.map((t,i)=>(
+                  <TaskRow key={t.key||i} t={t} ctx={true}
+                    nota={tnotas[t.key]||""} setNota={val=>setTnotas(n=>({...n,[t.key]:val}))}
+                    edit={patch=>editTarea(t,patch)} del={()=>borrarTarea(t)} />
+                ))}
+              </ul>
+            </section>
+            );
+          })}
+        </div>}
+      </main>
+
+      <aside className="tareas">
+        <h3>
+          Agenda de tareas ({nActivas})
+          <span className="t-head-actions">
+            <label className="chk" style={{paddingTop:0,fontSize:11}}><input type="checkbox" checked={verHechas} onChange={e=>setVerHechas(e.target.checked)} /> ver hechas</label>
+            <button className="link" onClick={addTarea}>+ tarea</button>
+          </span>
+        </h3>
+        <ul>
+          {tareasRender.length===0 && <li className="muted">Sin tareas. Marca años a facturar (Sí), "Ofrecer mant./bonos" o pulsa "+ tarea".</li>}
+          {tareasRender.map((t,i)=>(
+            <TaskRow key={t.key||i} t={t}
+              nota={tnotas[t.key]||""} setNota={val=>setTnotas(n=>({...n,[t.key]:val}))}
+              edit={patch=>editTarea(t,patch)} del={()=>borrarTarea(t)} />
+          ))}
+        </ul>
+      </aside>
+    </div>
+  );
+}
+
+function Servicio({s, m, tools, addTool, open, toggle, set}){
+  const decidido = esDecidido(s, m);
+  const desde = s.desde_anio || 9999;
+  const ay = m.ay || {};
+  const setAY = (a, patch)=> set({ay:{...ay, [String(a)]:{...(ay[String(a)]||{}), ...patch}}});
+  const badge = s.origen==="KD" ? "b-kd" : (s.origen==="Recurrente" ? "b-rec" : "b-man");
+  return (
+    <div className={"srv"+(decidido?" decided":"")}>
+      <div className="row1">
+        <span className="tipo">{s.tipo}</span>
+        <span className={"badge "+badge}>{s.origen}</span>
+        {s.ultima_fecha && <span className="muted" style={{fontSize:13}}>Últ. factura: {fmt(s.ultima_fecha)} <Help t="Fecha de la última factura de este servicio. Es la referencia para saber cuándo toca renovar."/></span>}
+        {m.lo_paga_cliente && <span className="badge b-cli">paga el cliente</span>}
+        {m.ofrecer && <span className="badge b-man">ofrecer mant./bonos</span>}
+      </div>
+      {s.lineas && s.lineas.length>0 && (
+        <div className="lineas">
+          {s.lineas.map((ln,i)=>(
+            <span key={i} className="ln" title={ln.desc}>
+              {ln.anio?ln.anio+": ":""}{ln.desc}{ln.importe?" ("+Math.round(ln.importe)+"€)":""}
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="ygrid">
+        {ANIOS.map(a=>{
+          const hist = impAnio(s,a);
+          if(hist) return <div key={a} className="yc yc-hist"><span className="yc-a">{a}</span><span className="yc-v">{Math.round(hist)} €</span><span className="yc-tag">facturado</span></div>;
+          if(a < desde) return <div key={a} className="yc yc-na"><span className="yc-a">{a}</span><span className="yc-v">—</span></div>;
+          const y = ay[String(a)]||{};
+          return <div key={a} className={"yc yc-pend"+(y.f==="si"?" si":y.f==="no"?" no":"")}>
+            <span className="yc-a">{a}</span>
+            <input className="yc-imp" type="number" step="0.01" placeholder={s.importe_sug? String(Math.round(s.importe_sug)):"€"}
+                   value={y.imp!=null?y.imp:""} onChange={e=>setAY(a,{imp: e.target.value===""?null:parseFloat(e.target.value)})} />
+            <span className="seg yc-seg">
+              <button title="Facturar este año" aria-pressed={y.f==="si"} onClick={()=>setAY(a,{f: y.f==="si"?"":"si"})}>Sí</button>
+              <button title="No facturar este año" aria-pressed={y.f==="no"} onClick={()=>setAY(a,{f: y.f==="no"?"":"no"})}>No</button>
+            </span>
+          </div>;
+        })}
+      </div>
+      <div className="row1" style={{marginTop:8}}>
+        <span className="lbl">Activado <Help t="¿El servicio está realmente instalado y funcionando? Si no lo sabes, marca Verificar."/></span>
+        <div className="seg act" role="group" aria-label="Activado">
+          {ACTIVADO.map(([v,l,h])=>(
+            <button key={v} title={h} aria-pressed={m.activado===v} onClick={()=>set({activado: m.activado===v?"":v})}>{l}</button>
+          ))}
+        </div>
+        <label className="chk ofr" title="Independiente de la decisión: ofrecer mantenimiento, bonos de horas o facturar horas usadas. Puede convivir con regularizar años anteriores.">
+          <input type="checkbox" checked={!!m.ofrecer} onChange={e=>set({ofrecer:e.target.checked})} /> Ofrecer mant./bonos
+        </label>
+        <button className="link" onClick={toggle}>{open?"▲ ocultar ficha":"▼ ficha"}</button>
+      </div>
+
+      {open && (
+        <div className="ficha">
+          <div>
+            <label>Tipo servicio <Help t="Nombre del servicio (lo detectó el sistema). Corrígelo si se ha clasificado mal."/></label>
+            <input value={m.tipo??s.tipo} onChange={e=>set({tipo:e.target.value})} />
+          </div>
+          {s.categoria==="erp" && (
+            <div>
+              <label>Herramienta <Help t="ERP/CRM con el que se da el servicio: Getradi o Dolibarr. Puedes añadir más opciones."/></label>
+              <select value={m.herramienta||""} onChange={e=> e.target.value==="__add" ? addTool() : set({herramienta:e.target.value})}>
+                <option value="">—</option>
+                {tools.map(t=><option key={t} value={t}>{t}</option>)}
+                <option value="__add">+ añadir opción…</option>
+              </select>
+            </div>
+          )}
+          {s.categoria==="web" && (
+            <div>
+              <label>Dominio <Help t="Dominio de Dinahosting de este cliente. Al elegirlo se rellena el proveedor y la fecha de caducidad."/> {m.dominio && DOM_BY[m.dominio] && <span className="muted">· caduca {DOM_BY[m.dominio].expira}</span>}</label>
+              <select value={m.dominio||""} onChange={e=>{const d=DOM_BY[e.target.value]; set({dominio:e.target.value, hosting:(m.hosting|| (d?d.prov:"")), uso_hasta:(d&&d.expira_iso ? d.expira_iso : (m.uso_hasta||"")) });}}>
+                <option value="">— elegir dominio —</option>
+                {s.dom_sug && s.dom_sug.length>0 && <optgroup label="Sugeridos para este cliente">
+                  {s.dom_sug.map(d=><option key={d} value={d}>{d}</option>)}
+                </optgroup>}
+                <optgroup label="Todos los dominios">
+                  {DOMINIOS.map(d=><option key={d.dom} value={d.dom}>{d.dom} ({d.prov})</option>)}
+                </optgroup>
+              </select>
+            </div>
+          )}
+          {s.categoria==="web" && (
+            <div>
+              <label>Hosting / proveedor <Help t="Dónde está alojado: Dinahosting, LucusHost, SiteGround… Se rellena solo al elegir el dominio."/></label>
+              <input value={m.hosting|| (DOM_BY[m.dominio||""]?DOM_BY[m.dominio].prov:"") } onChange={e=>set({hosting:e.target.value})} placeholder="Dinahosting…" />
+            </div>
+          )}
+          <div>
+            <label>Periodicidad <Help t="Cada cuánto se cobra: Anual, Mensual o Puntual (una vez, p.ej. una avería o bono de horas)."/></label>
+            <select value={m.periodicidad||"anual"} onChange={e=>set({periodicidad:e.target.value})}>
+              {PERIODICIDAD.map(([v,l])=><option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+          <div>
+            <label>Facturación <Help t="Marca esto si el dominio/hosting lo paga el cliente directamente al proveedor (no lo facturas tú)."/></label>
+            <label className="chk"><input type="checkbox" checked={!!m.lo_paga_cliente} onChange={e=>set({lo_paga_cliente:e.target.checked})} /> Lo paga el cliente directamente</label>
+          </div>
+          <div>
+            <label>Uso hasta <Help t="Fecha hasta la que está cubierto el servicio (próxima renovación). En web se rellena con la caducidad del dominio."/> {s.uso_hasta_def && <button className="link" style={{fontSize:12}} onClick={()=>set({uso_hasta:s.uso_hasta_def})}>def: {fmt(s.uso_hasta_def)}</button>}</label>
+            <input type="date" value={m.uso_hasta||s.uso_hasta_def||""} onChange={e=>set({uso_hasta:e.target.value})} />
+          </div>
+          {s.lineas && s.lineas.length>0 && (
+            <div style={{gridColumn:"1/-1"}}>
+              <label>Líneas de factura (descripción completa)</label>
+              <div className="lineas-full">
+                {s.lineas.map((ln,i)=>(
+                  <div key={i} className="lnf">{ln.anio?<b>{ln.anio}</b>:null} {ln.desc}{ln.importe?" · "+Math.round(ln.importe)+"€":""}</div>
+                ))}
+              </div>
+            </div>
+          )}
+          <div style={{gridColumn:"1/-1"}}>
+            <label>Nota</label>
+            <textarea value={m.nota||""} onChange={e=>set({nota:e.target.value})} placeholder="cliente de baja en 2024 · dominio caduca 19/01 · …"></textarea>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
