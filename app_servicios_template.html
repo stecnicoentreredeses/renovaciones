@@ -437,8 +437,9 @@ function App(){
     const nuevo = modo==="nuevo";
     const cod = nuevo ? ("MAN-"+Date.now()) : codigo;
     const id = "MAN__"+cod+"__"+Date.now();
+    const desde_anio = Number((fecha||HOY).slice(0,4));
     setManual(ms=>[...ms, {id, codigo:cod, cliente, tipo, origen:"Manual",
-      anios:{}, kd_inicio:null, ultima_fecha:fecha||null, uso_hasta_def:"",
+      anios:{}, kd_inicio:null, ultima_fecha:fecha||null, uso_hasta_def:"", desde_anio,
       importe_sug:Number(importe)||0, periodicidad:periodicidad||"anual", estado:"alta manual"}]);
     setOpen(o=>({...o,[id]:true}));
     setModalAlta(false);
