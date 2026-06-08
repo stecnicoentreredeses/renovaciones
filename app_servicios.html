@@ -144,6 +144,13 @@
   li.done .t-titulo{text-decoration:line-through;color:var(--mut);font-weight:400}
   .res-list .t-titulo{color:var(--ink)}
   .res-list .t-ctx{margin-left:26px}
+  .agenda-page{max-width:780px}
+  .agenda-tools{display:flex;gap:10px;align-items:center;margin-bottom:12px}
+  .agenda-h{margin:0 0 8px;font-size:16px}
+  .agenda-list{list-style:none;margin:0;padding:0;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .agenda-list li{padding:9px 16px;border-bottom:1px solid #f0f0f0}
+  .agenda-list li:last-child{border-bottom:0}
+  .agenda-list li.done{opacity:.55}
 </style>
 </head>
 <body>
@@ -416,7 +423,9 @@ function App(){
         <label className="chk" style={{paddingTop:0}}><input type="checkbox" checked={ocultarRev} onChange={e=>setOcultarRev(e.target.checked)} /> Ocultar revisados</label>
         <span className="seg vista" role="group" aria-label="Vista">
           <button aria-pressed={vista==="servicios"} onClick={()=>setVista("servicios")}>Servicios</button>
-          <button aria-pressed={vista==="resumen"} onClick={()=>setVista("resumen")}>Resumen por cliente</button>
+          <button aria-pressed={vista==="agenda"} onClick={()=>setVista("agenda")}>Agenda</button>
+          <button aria-pressed={vista==="kanban"} onClick={()=>setVista("kanban")}>Kanban</button>
+          <button aria-pressed={vista==="resumen"} onClick={()=>setVista("resumen")}>Resumen</button>
         </span>
         {vista==="servicios" && <button className="btn" onClick={()=>colapsarTodo(true)}>Contraer todo</button>}
         {vista==="servicios" && <button className="btn" onClick={()=>colapsarTodo(false)}>Expandir todo</button>}
@@ -513,25 +522,23 @@ function App(){
             );
           })}
         </div>}
-      </main>
 
-      <aside className="tareas">
-        <h3>
-          Agenda de tareas ({nActivas})
-          <span className="t-head-actions">
-            <label className="chk" style={{paddingTop:0,fontSize:11}}><input type="checkbox" checked={verHechas} onChange={e=>setVerHechas(e.target.checked)} /> ver hechas</label>
-            <button className="link" onClick={addTarea}>+ tarea</button>
-          </span>
-        </h3>
-        <ul>
-          {tareasRender.length===0 && <li className="muted">Sin tareas. Marca años a facturar (Sí), "Ofrecer mant./bonos" o pulsa "+ tarea".</li>}
-          {tareasRender.map((t,i)=>(
-            <TaskRow key={t.key||i} t={t}
-              nota={tnotas[t.key]||""} setNota={val=>setTnotas(n=>({...n,[t.key]:val}))}
-              edit={patch=>editTarea(t,patch)} del={()=>borrarTarea(t)} />
-          ))}
-        </ul>
-      </aside>
+        {vista==="agenda" && <section className="agenda-page">
+          <div className="agenda-tools">
+            <label className="chk" style={{paddingTop:0}}><input type="checkbox" checked={verHechas} onChange={e=>setVerHechas(e.target.checked)} /> ver hechas</label>
+            <button className="btn" onClick={addTarea}>+ tarea</button>
+          </div>
+          <h3 className="agenda-h">Agenda de tareas ({nActivas})</h3>
+          <ul className="agenda-list">
+            {tareasRender.length===0 && <li className="muted">Sin tareas. Marca años a facturar (Sí), "Ofrecer mant./bonos" o pulsa "+ tarea".</li>}
+            {tareasRender.map((t,i)=>(
+              <TaskRow key={t.key||i} t={t}
+                nota={tnotas[t.key]||""} setNota={val=>setTnotas(n=>({...n,[t.key]:val}))}
+                edit={patch=>editTarea(t,patch)} del={()=>borrarTarea(t)} />
+            ))}
+          </ul>
+        </section>}
+      </main>
     </div>
   );
 }
