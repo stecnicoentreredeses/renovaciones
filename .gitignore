@@ -9,3 +9,7 @@ __pycache__/
 # Temporales
 *.tmp
 *.log
+
+# Descargas de la app (export Asktivia y copias de seguridad del usuario)
+decisiones_renovaciones.json
+renovaciones_backup.json
