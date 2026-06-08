@@ -151,6 +151,31 @@
   .agenda-list li{padding:9px 16px;border-bottom:1px solid #f0f0f0}
   .agenda-list li:last-child{border-bottom:0}
   .agenda-list li.done{opacity:.55}
+  .kanban{}
+  .kb-bar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+  .kb-prog{flex:1;min-width:200px;max-width:340px}
+  .kb-prog small{color:var(--mut)}
+  .kb-track{height:9px;background:#e7ecf3;border-radius:6px;overflow:hidden;margin-top:4px}
+  .kb-fill{height:100%;background:var(--blue)}
+  .kb-board{display:flex;gap:13px;overflow-x:auto;align-items:flex-start;padding-bottom:6px}
+  .kb-col{flex:0 0 240px;background:#eef1f6;border:1px solid var(--line);border-radius:12px;padding:10px;min-height:60px}
+  .kb-col > h3{margin:2px 4px 10px;font-size:13px;display:flex;align-items:center;gap:8px;color:#374151}
+  .kb-dot{width:9px;height:9px;border-radius:50%}
+  .kb-count{margin-left:auto;background:#fff;border:1px solid var(--line);border-radius:20px;font-size:11px;padding:1px 9px;color:var(--mut)}
+  .d-sin{background:#9aa4b2}.d-hab{background:#e0a800}.d-pf{background:#1f6feb}.d-fac{background:#16a34a}.d-ter{background:#6b7280}
+  .kb-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 11px;margin-bottom:9px;box-shadow:0 1px 2px rgba(16,24,40,.04);cursor:grab}
+  .kb-card:hover{border-color:#c5d3e8}
+  .kb-nm{font-weight:600;font-size:13px}
+  .kb-cod{font-size:11px;color:#9aa4b2;font-weight:500}
+  .kb-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;font-size:11px}
+  .kb-tag{background:#f3f5f9;border:1px solid var(--line);border-radius:6px;padding:1px 7px;color:#4b5563}
+  .kb-tag.eur{background:#eafaf0;border-color:#bbe7cb;color:#15803d}
+  .kb-tag.fch{background:#fff4e5;border-color:#ffd9a8;color:#b45309}
+  .kb-foot{display:flex;align-items:center;gap:8px;margin-top:9px;justify-content:space-between}
+  .kb-rev{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px}
+  .kb-rev.yes{background:#e7f6ec;color:#15803d;border:1px solid #bbe7cb}
+  .kb-rev.no{background:#fdeced;color:#b42318;border:1px solid #f5c2c7}
+  .kb-sel{font-size:11px;padding:3px 5px}
 </style>
 </head>
 <body>
@@ -184,6 +209,13 @@ const CLI_ESTADOS = [
   ["pdte_fact","Pendiente de facturar"],
   ["facturado","Facturado"],
   ["terminado","Terminado"],
+];
+const KANBAN_COLS = [
+  ["",          "Sin clasificar",     "d-sin"],
+  ["hablar",    "Hablar con cliente", "d-hab"],
+  ["pdte_fact", "Pendiente facturar", "d-pf"],
+  ["facturado", "Facturado",          "d-fac"],
+  ["terminado", "Terminado",          "d-ter"],
 ];
 const ACTIVADO = [["si","Sí","El servicio está instalado y activo ahora mismo."],
                   ["no","No","El servicio no está activo."],
@@ -243,6 +275,8 @@ function App(){
   const [fOrig, setFOrig]   = useState("");
   const [fEst, setFEst]     = useState("");
   const [ocultarRev, setOcultarRev] = useState(false);
+  const [kbSinRev, setKbSinRev] = useState(false);
+  const [kbConEur, setKbConEur] = useState(false);
   const [open, setOpen]     = useState({});
 
   useEffect(()=>save(K_MARKS, marks), [marks]);
@@ -350,6 +384,18 @@ function App(){
     return Object.values(g).sort((a,b)=> (a.prox||"9999") < (b.prox||"9999") ? -1 : ((a.prox||"9999")>(b.prox||"9999")?1:a.cliente.localeCompare(b.cliente)));
   }, [tareasRender]);
   const totalFacturar = resumen.reduce((s,g)=>s+g.total,0);
+
+  const kanbanData = useMemo(()=>{
+    const porCod = {};
+    resumen.forEach(g=>{ if(g.codigo) porCod[g.codigo] = g; });
+    const nServ = {}, nombre = {};
+    todos.forEach(s=>{ nServ[s.codigo] = (nServ[s.codigo]||0)+1; if(!nombre[s.codigo]) nombre[s.codigo] = s.cliente; });
+    return codigosTodos.map(cod=>{
+      const v = cmeta[cod]||{}; const r = porCod[cod]||{};
+      return { codigo:cod, cliente:nombre[cod]||cod, nServ:nServ[cod]||0,
+               total:r.total||0, prox:r.prox||"", estado:v.estado||"", revisado:!!v.revisado };
+    }).sort((a,b)=>a.cliente.localeCompare(b.cliente));
+  }, [codigosTodos, cmeta, resumen, todos]);
 
   function exportar(){
     const dec = todos.filter(s=>marks[s.id] || s.origen==="Manual").map(s=>{
@@ -538,8 +584,69 @@ function App(){
             ))}
           </ul>
         </section>}
+
+        {vista==="kanban" && <Kanban
+          data={kanbanData} cols={KANBAN_COLS}
+          total={codigosTodos.length} nRevisados={nRevisados}
+          sinRev={kbSinRev} conEur={kbConEur} setSinRev={setKbSinRev} setConEur={setKbConEur}
+          onEstado={(cod,estado)=>setCM(cod,{estado})}
+          onRevisado={(cod,val)=>setCM(cod,{revisado:val})} />}
       </main>
     </div>
+  );
+}
+
+function Kanban({data, cols, total, nRevisados, sinRev, conEur, setSinRev, setConEur, onEstado, onRevisado}){
+  function visible(c){
+    if(sinRev && c.revisado) return false;
+    if(conEur && !(c.total>0)) return false;
+    return true;
+  }
+  const filt = data.filter(visible);
+  const pct = total ? Math.round(100*nRevisados/total) : 0;
+  return (
+    <section className="kanban">
+      <div className="kb-bar">
+        <div className="kb-prog">
+          <small><b>{nRevisados} / {total}</b> revisados · eje independiente de la columna</small>
+          <div className="kb-track"><div className="kb-fill" style={{width:pct+"%"}}></div></div>
+        </div>
+        <label className="chk"><input type="checkbox" checked={sinRev} onChange={e=>setSinRev(e.target.checked)} /> Solo sin revisar</label>
+        <label className="chk"><input type="checkbox" checked={conEur} onChange={e=>setConEur(e.target.checked)} /> Solo con € pendiente</label>
+      </div>
+      <div className="kb-board">
+        {cols.map(([val,label,dot])=>{
+          const items = filt.filter(c=>(c.estado||"")===val);
+          return (
+            <div className="kb-col" key={val||"__sin"}
+                 onDragOver={e=>e.preventDefault()}
+                 onDrop={e=>{ const cod=e.dataTransfer.getData("text/cod"); if(cod) onEstado(cod, val); }}>
+              <h3><span className={"kb-dot "+dot}></span> {label} <span className="kb-count">{items.length}</span></h3>
+              {items.map(c=>(
+                <div className="kb-card" key={c.codigo} draggable
+                     onDragStart={e=>e.dataTransfer.setData("text/cod", c.codigo)}>
+                  <div className="kb-nm">{c.cliente} <span className="kb-cod">{c.codigo}</span></div>
+                  <div className="kb-meta">
+                    <span className="kb-tag">{c.nServ} {c.nServ===1?"servicio":"servicios"}</span>
+                    {c.total>0 && <span className="kb-tag eur">{Math.round(c.total)} €</span>}
+                    {c.prox && <span className="kb-tag fch">{fmt(c.prox)}</span>}
+                  </div>
+                  <div className="kb-foot">
+                    <label className={"kb-rev "+(c.revisado?"yes":"no")}>
+                      <input type="checkbox" checked={c.revisado} onChange={e=>onRevisado(c.codigo, e.target.checked)} />
+                      {c.revisado ? "revisado" : "sin revisar"}
+                    </label>
+                    <select className="kb-sel" value={c.estado||""} onChange={e=>onEstado(c.codigo, e.target.value)} aria-label="Estado del cliente">
+                      {cols.map(([v,l])=><option key={v} value={v}>{l}</option>)}
+                    </select>
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
