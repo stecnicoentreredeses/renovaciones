@@ -105,19 +105,12 @@
   .link{background:none;border:0;color:var(--blue);cursor:pointer;font:inherit;text-decoration:underline;padding:0}
   .help{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;
         background:var(--blue);color:#fff;font-size:11px;font-weight:700;cursor:help;margin-left:5px;font-style:normal}
-  .tareas{position:fixed;right:0;bottom:0;width:380px;max-height:48vh;overflow:auto;background:#fff;
-          border:1px solid var(--line);border-radius:12px 0 0 0;box-shadow:0 -3px 16px rgba(0,0,0,.16);z-index:20}
-  .tareas h3{margin:0;padding:11px 14px;font-size:15px;background:#fde7e9;border-bottom:1px solid var(--line)}
-  .tareas ul{margin:0;padding:8px 14px;list-style:none}
-  .tareas li{font-size:13.5px;padding:7px 0;border-bottom:1px solid #f0f0f0;overflow:hidden}
   .tareas .t-tipo{font-weight:600;color:var(--bad)}
   .t-fecha{float:right;font-size:12.5px;font-weight:600;color:var(--mut);background:#eef0f2;border-radius:5px;padding:1px 7px}
   .t-fecha.t-soon{color:var(--warn);background:var(--warnbg)}
   .t-fecha.t-over{color:#fff;background:var(--bad)}
   .t-nota{display:block;width:100%;margin-top:5px;padding:5px 8px;border:1px solid #d0d4d8;border-radius:6px;font:inherit;font-size:13px}
   .t-nota:focus{border-color:var(--blue);outline:none}
-  .tareas h3{display:flex;justify-content:space-between;align-items:center}
-  .t-head-actions{display:flex;align-items:center;gap:10px;font-weight:400}
   .t-row1{display:flex;align-items:center;gap:6px}
   .t-titulo{flex:1;min-width:0;padding:4px 7px;border:1px solid #d0d4d8;border-radius:6px;font:inherit;font-size:13px;font-weight:600;color:var(--bad)}
   .t-fecha-ed{width:135px;padding:4px 6px;border:1px solid #d0d4d8;border-radius:6px;font:inherit;font-size:12px}
@@ -126,7 +119,6 @@
   .t-del{border:0;background:none;color:#aaa;cursor:pointer;font-size:14px;padding:2px 4px}
   .t-del:hover{color:var(--bad)}
   .t-ctx{font-size:12px;color:var(--mut);margin-top:3px}
-  .tareas li.done{opacity:.55}
   .tareas li.done .t-titulo{text-decoration:line-through;color:var(--mut);font-weight:400}
   .muted{color:var(--mut)}
   .add{font-size:14px}
@@ -151,7 +143,6 @@
   .agenda-list li{padding:9px 16px;border-bottom:1px solid #f0f0f0}
   .agenda-list li:last-child{border-bottom:0}
   .agenda-list li.done{opacity:.55}
-  .kanban{}
   .kb-bar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
   .kb-prog{flex:1;min-width:200px;max-width:340px}
   .kb-prog small{color:var(--mut)}
@@ -510,7 +501,7 @@ function App(){
             <div><b>Años a facturar.</b> En los años sin factura pones el <b>importe</b> y marcas <b>Sí/No</b> facturar. Cada "Sí" genera una tarea de facturación en la agenda. Así regularizas los años que faltan (2025, 2026, 2027).</div>
             <div><b>Sin decisión global:</b> la decisión es por año. Para dejar caducar un dominio, marca sus años a <b>No</b> (en web con dominio genera la tarea de no renovar).</div>
             <div><b>Líneas de factura.</b> Bajo cada servicio ves el texto original de la factura — útil para identificar qué es de verdad. La descripción completa está en la ficha.</div>
-            <div><b>Agenda (abajo dcha).</b> Las decisiones generan tareas ordenadas por fecha: 🔴 vencida, 🟡 &lt;60 días. Puedes <b>editar título y fecha</b>, marcar <b>hecha</b> (✓), <b>ocultar</b> (✕), añadir <b>nota</b> y crear tareas con <b>+ tarea</b>.</div>
+            <div><b>Agenda (pestaña Agenda).</b> Las decisiones generan tareas ordenadas por fecha: 🔴 vencida, 🟡 &lt;60 días. Puedes <b>editar título y fecha</b>, marcar <b>hecha</b> (✓), <b>ocultar</b> (✕), añadir <b>nota</b> y crear tareas con <b>+ tarea</b>.</div>
             <div><b>Guardado.</b> Todo se guarda solo en este navegador. Usa <b>Descargar decisiones (JSON)</b> para tener una copia.</div>
             <div><b>Por cliente.</b> Con ▾/▸ contraes o expandes sus servicios. Marca <b>Revisado</b> cuando hayas terminado (se contrae solo) y elige su <b>estado</b>: hablar con él, pendiente de facturar, facturado o terminado.</div>
             <div><b>Ofrecer mant./bonos</b> es un marcador <b>independiente</b> de la decisión: puede convivir con "renovar" o con regularizar años anteriores. Es para ofrecer mantenimiento, bonos de horas o facturar horas usadas.</div>
@@ -636,7 +627,7 @@ function AltaManualForm({clientes, onClose, onAdd}){
     onAdd({modo, codigo, cliente:cli, tipo:tipo.trim(), periodicidad, importe, fecha});
   }
   return (
-    <div className="ov on" onMouseDown={e=>{ if(e.target.classList.contains("ov")) onClose(); }}>
+    <div className="ov" onMouseDown={e=>{ if(e.target.classList.contains("ov")) onClose(); }}>
       <form className="modal" onSubmit={submit}>
         <h3>Añadir servicio manual</h3>
         <div className="fld">
