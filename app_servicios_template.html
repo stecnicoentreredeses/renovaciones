@@ -201,6 +201,7 @@ const K_TNOTAS = "renov:tareasnotas:v1";
 const K_CMETA = "renov:clientes:v1";
 const K_TOV = "renov:tareasedit:v1";
 const K_TMAN = "renov:tareasman:v1";
+const K_ALL = [K_MARKS, K_TOOLS, K_MAN, K_TNOTAS, K_CMETA, K_TOV, K_TMAN];
 
 const DECISIONES = [
   ["renovar_todos","Renovar todos los años","El servicio se factura cada año de forma indefinida."],
@@ -434,6 +435,34 @@ function App(){
     a.href = URL.createObjectURL(blob); a.download = "decisiones_renovaciones.json"; a.click();
   }
 
+  function copiaSeguridad(){
+    const datos = {};
+    K_ALL.forEach(k=>{ const v = localStorage.getItem(k); if(v!=null) datos[k] = v; });
+    const payload = {_app:"renovaciones", v:1, fecha:HOY, datos};
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "renovaciones_backup.json"; a.click();
+  }
+
+  function restaurar(e){
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ev=>{
+      let obj;
+      try { obj = JSON.parse(ev.target.result); } catch(err){ alert("El fichero no es un JSON válido."); return; }
+      if(!obj || obj._app!=="renovaciones" || !obj.datos){ alert("Esto no es una copia de seguridad de Renovaciones."); return; }
+      const claves = Object.keys(obj.datos).filter(k=>K_ALL.includes(k));
+      if(!claves.length){ alert("La copia no contiene datos reconocibles."); return; }
+      if(!confirm("Esto SOBRESCRIBIRÁ todo tu trabajo actual con el de la copia ("+(obj.fecha||"sin fecha")+"). ¿Seguro?")) return;
+      K_ALL.forEach(k=>localStorage.removeItem(k));
+      claves.forEach(k=>localStorage.setItem(k, obj.datos[k]));
+      location.reload();
+    };
+    reader.readAsText(file);
+  }
+
   function addTool(){
     const n = prompt("Nueva herramienta:");
     if(n && !tools.includes(n)) setTools([...tools, n]);
@@ -494,6 +523,9 @@ function App(){
         {vista==="servicios" && <button className="btn" onClick={()=>colapsarTodo(false)}>Expandir todo</button>}
         <span className="muted">{grupos.length} clientes</span>
         <span style={{flex:1}}></span>
+        <button className="btn" onClick={copiaSeguridad} title="Descarga un fichero con TODO tu trabajo (copia de seguridad real, restaurable)">Copia de seguridad</button>
+        <button className="btn" onClick={()=>document.getElementById("restoreFile").click()} title="Carga una copia de seguridad y restaura tu trabajo">Restaurar</button>
+        <input id="restoreFile" type="file" accept="application/json,.json" style={{display:"none"}} onChange={restaurar} />
         <button className="btn primary" onClick={exportar}>Descargar decisiones (JSON)</button>
       </div>
       </div>
