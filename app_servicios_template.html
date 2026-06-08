@@ -403,12 +403,17 @@ function App(){
     resumen.forEach(g=>{ if(g.codigo) porCod[g.codigo] = g; });
     const nServ = {}, nombre = {};
     todos.forEach(s=>{ nServ[s.codigo] = (nServ[s.codigo]||0)+1; if(!nombre[s.codigo]) nombre[s.codigo] = s.cliente; });
+    const t = q.trim().toLowerCase();
     return codigosTodos.map(cod=>{
       const v = cmeta[cod]||{}; const r = porCod[cod]||{};
       return { codigo:cod, cliente:nombre[cod]||cod, nServ:nServ[cod]||0,
                total:r.total||0, prox:r.prox||"", estado:v.estado||"", revisado:!!v.revisado };
+    }).filter(c=>{
+      if(ocultarRev && c.revisado) return false;
+      if(t && !(c.cliente.toLowerCase().includes(t) || (c.codigo||"").toLowerCase().includes(t))) return false;
+      return true;
     }).sort((a,b)=>a.cliente.localeCompare(b.cliente));
-  }, [codigosTodos, cmeta, resumen, todos]);
+  }, [codigosTodos, cmeta, resumen, todos, q, ocultarRev]);
 
   function exportar(){
     const dec = todos.filter(s=>marks[s.id] || s.origen==="Manual").map(s=>{
@@ -496,22 +501,22 @@ function App(){
 
       <div className="bar">
         <input type="search" placeholder="Buscar cliente, código o servicio…" value={q} onChange={e=>setQ(e.target.value)} />
-        <select value={fDec} onChange={e=>setFDec(e.target.value)}>
+        {vista==="servicios" && <select value={fDec} onChange={e=>setFDec(e.target.value)}>
           <option value="">Servicios: todos</option>
           <option value="__sin">Sin decidir</option>
           <option value="__si">Decididos</option>
-        </select>
-        <select value={fOrig} onChange={e=>setFOrig(e.target.value)}>
+        </select>}
+        {vista==="servicios" && <select value={fOrig} onChange={e=>setFOrig(e.target.value)}>
           <option value="">Origen: todos</option>
           <option value="KD">KD</option>
           <option value="Recurrente">Recurrente</option>
           <option value="Manual">Manual</option>
-        </select>
-        <select value={fEst} onChange={e=>setFEst(e.target.value)}>
+        </select>}
+        {vista==="servicios" && <select value={fEst} onChange={e=>setFEst(e.target.value)}>
           <option value="">Estado cliente: todos</option>
           {CLI_ESTADOS.filter(([v])=>v).map(([v,l])=><option key={v} value={v}>{l}</option>)}
-        </select>
-        <label className="chk" style={{paddingTop:0}}><input type="checkbox" checked={ocultarRev} onChange={e=>setOcultarRev(e.target.checked)} /> Ocultar revisados</label>
+        </select>}
+        {(vista==="servicios"||vista==="kanban") && <label className="chk" style={{paddingTop:0}}><input type="checkbox" checked={ocultarRev} onChange={e=>setOcultarRev(e.target.checked)} /> Ocultar revisados</label>}
         <span className="seg vista" role="group" aria-label="Vista">
           <button aria-pressed={vista==="servicios"} onClick={()=>setVista("servicios")}>Servicios</button>
           <button aria-pressed={vista==="agenda"} onClick={()=>setVista("agenda")}>Agenda</button>
@@ -521,7 +526,7 @@ function App(){
         {vista==="servicios" && <button className="btn" onClick={()=>setModalAlta(true)}>+ Añadir servicio manual</button>}
         {vista==="servicios" && <button className="btn" onClick={()=>colapsarTodo(true)}>Contraer todo</button>}
         {vista==="servicios" && <button className="btn" onClick={()=>colapsarTodo(false)}>Expandir todo</button>}
-        <span className="muted">{grupos.length} clientes</span>
+        {vista==="servicios" && <span className="muted">{grupos.length} clientes</span>}
         <span style={{flex:1}}></span>
         <button className="btn" onClick={copiaSeguridad} title="Descarga un fichero con TODO tu trabajo (copia de seguridad real, restaurable)">Copia de seguridad</button>
         <button className="btn" onClick={()=>document.getElementById("restoreFile").click()} title="Carga una copia de seguridad y restaura tu trabajo">Restaurar</button>
@@ -568,7 +573,7 @@ function App(){
                 <label className="chk" style={{paddingTop:0}} title="Marca cuando hayas revisado todos sus servicios">
                   <input type="checkbox" checked={!!v.revisado} onChange={e=>setCM(g.codigo,{revisado:e.target.checked, collapsed:e.target.checked})} /> Revisado
                 </label>
-                <button className="link add" onClick={()=>setModalAlta(true)}>+ Añadir servicio</button>
+                <button className="link add" onClick={()=>setModalAlta(g.codigo)}>+ Añadir servicio</button>
               </span>
             </h2>
             {!v.collapsed && g.items.map(s=>(
@@ -643,15 +648,16 @@ function App(){
       </main>
       {modalAlta && <AltaManualForm
         clientes={clientesLista}
+        preCodigo={typeof modalAlta==="string"?modalAlta:""}
         onClose={()=>setModalAlta(false)}
         onAdd={addServicioManual} />}
     </div>
   );
 }
 
-function AltaManualForm({clientes, onClose, onAdd}){
+function AltaManualForm({clientes, preCodigo, onClose, onAdd}){
   const [modo, setModo] = useState("existente");
-  const [codigo, setCodigo] = useState("");
+  const [codigo, setCodigo] = useState(preCodigo||"");
   const [nuevoNom, setNuevoNom] = useState("");
   const [tipo, setTipo] = useState("");
   const [periodicidad, setPeriodicidad] = useState("anual");
