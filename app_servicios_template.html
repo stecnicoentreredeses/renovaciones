@@ -53,6 +53,7 @@
   .est-pdte_fact{color:#9a6700;border-color:#9a6700;background:var(--warnbg)}
   .est-facturado{color:#1e40af;border-color:#1e40af;background:#dbeafe}
   .est-terminado{color:var(--ok);border-color:var(--ok);background:var(--okbg)}
+  .est-kd_fin{color:#5b21b6;border-color:#7c3aed;background:#ede9fe}
   .chk.ofr{padding-top:0;font-size:13.5px;background:#f3eefb;border:1px solid #e2d6f5;border-radius:7px;padding:5px 9px}
   .srv{padding:13px 16px;border-bottom:1px solid #eef0f2}
   .srv:last-child{border-bottom:0}
@@ -163,7 +164,7 @@
   .kb-col > h3{margin:2px 4px 10px;font-size:13px;display:flex;align-items:center;gap:8px;color:#374151}
   .kb-dot{width:9px;height:9px;border-radius:50%}
   .kb-count{margin-left:auto;background:#fff;border:1px solid var(--line);border-radius:20px;font-size:11px;padding:1px 9px;color:var(--mut)}
-  .d-sin{background:#9aa4b2}.d-hab{background:#e0a800}.d-pf{background:#1f6feb}.d-fac{background:#16a34a}.d-ter{background:#6b7280}
+  .d-sin{background:#9aa4b2}.d-hab{background:#e0a800}.d-pf{background:#1f6feb}.d-fac{background:#16a34a}.d-ter{background:#6b7280}.d-kdfin{background:#7c3aed}
   .kb-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 11px;margin-bottom:9px;box-shadow:0 1px 2px rgba(16,24,40,.04);cursor:grab}
   .kb-card:hover{border-color:#c5d3e8}
   .kb-nm{font-weight:600;font-size:13px}
@@ -222,6 +223,7 @@ const CLI_ESTADOS = [
   ["pdte_fact","Pendiente de facturar"],
   ["facturado","Facturado"],
   ["terminado","Terminado"],
+  ["kd_fin","KD finalizado · sin renovación"],
 ];
 const KANBAN_COLS = [
   ["",          "Sin clasificar",     "d-sin"],
@@ -229,6 +231,7 @@ const KANBAN_COLS = [
   ["pdte_fact", "Pendiente facturar", "d-pf"],
   ["facturado", "Facturado",          "d-fac"],
   ["terminado", "Terminado",          "d-ter"],
+  ["kd_fin",    "KD finalizado",      "d-kdfin"],
 ];
 const ACTIVADO = [["si","Sí","El servicio está instalado y activo ahora mismo."],
                   ["no","No","El servicio no está activo."],
@@ -388,9 +391,9 @@ function App(){
         }
         if(y.f==="no") hayNo=true;
       });
-      // web con dominio que se deja caducar (todos los años a No, ninguno a Sí)
-      if(s.categoria==="web" && m.dominio && hayNo && !haySi)
-        out.push({key:s.id+"::norenovdom", codigo:s.codigo, cat:"dominio", importe:0, tipo:"No renovar dominio — dejar caducar", cli:s.cliente, srv:dlabel, fecha:(d?d.expira_iso:"")});
+      // web con dominio que se deja caducar: checkbox explícito O todos los años a No (sin ninguno a Sí)
+      if(s.categoria==="web" && m.dominio && (m.dejar_caducar || (hayNo && !haySi)))
+        out.push({key:s.id+"::norenovdom", codigo:s.codigo, cat:"dominio", importe:0, tipo:"No renovar dominio — dejar caducar", cli:s.cliente, srv:dlabel, fecha:(d?d.expira_iso:m.uso_hasta||"")});
       if(m.ofrecer) out.push({key:s.id+"::ofrecer", codigo:s.codigo, cat:"ofrecer", importe:0, tipo:"Ofrecer mantenimiento / bonos", cli:s.cliente, srv:s.tipo, fecha:m.uso_hasta||""});
     });
     out.sort((a,b)=> (a.fecha||"9999-99") < (b.fecha||"9999-99") ? -1 : 1);
@@ -454,7 +457,7 @@ function App(){
         herramienta:m.herramienta||"", dominio:m.dominio||"",
         hosting:m.hosting||dom.prov||"", dominio_expira:dom.expira||"",
         lo_paga_cliente:!!m.lo_paga_cliente, propio:!!m.propio, ofrecer:!!m.ofrecer, activado:m.activado||"",
-        desde_anio:m.desde_anio||s.desde_anio||null,
+        dejar_caducar:!!m.dejar_caducar, desde_anio:m.desde_anio||s.desde_anio||null,
         periodicidad:m.periodicidad||"anual", uso_hasta:m.uso_hasta||s.uso_hasta_def||"", nota:m.nota||"",
         anios_facturados:s.anios||{}, anios_a_facturar:por_anio
       };
@@ -844,6 +847,7 @@ function Servicio({s, m, tools, addTool, open, toggle, set, domUsage, addTarea})
         {m.lo_paga_cliente && <span className="badge b-cli">paga el cliente</span>}
         {m.ofrecer && <span className="badge b-man">ofrecer mant./bonos</span>}
         {m.propio && <span className="badge b-prop">propio / no facturable</span>}
+        {m.dejar_caducar && <span className="badge b-dup">no renovar dominio</span>}
         {dupOtros.length>0 && <span className="badge b-dup" title={"Mismo dominio asignado también a: "+dupOtros.join(", ")}>⚠ dominio en otro cliente</span>}
       </div>
       {s.lineas && s.lineas.length>0 && (
@@ -882,6 +886,9 @@ function Servicio({s, m, tools, addTool, open, toggle, set, domUsage, addTarea})
         <label className="chk ofr" title="Independiente de la decisión: ofrecer mantenimiento, bonos de horas o facturar horas usadas. Puede convivir con regularizar años anteriores.">
           <input type="checkbox" checked={!!m.ofrecer} onChange={e=>set({ofrecer:e.target.checked})} /> Ofrecer mant./bonos
         </label>
+        {s.categoria==="web" && <label className="chk" title="Genera la tarea 'No renovar dominio — dejar caducar' en la agenda.">
+          <input type="checkbox" checked={!!m.dejar_caducar} onChange={e=>set({dejar_caducar:e.target.checked})} /> No renovar dominio
+        </label>}
         <button className="link" onClick={addTarea} title="Crear una tarea ligada a este servicio">+ tarea</button>
         <button className="link" onClick={toggle}>{open?"▲ ocultar ficha":"▼ ficha"}</button>
       </div>
