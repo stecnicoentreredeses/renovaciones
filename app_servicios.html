@@ -189,6 +189,16 @@
   .fld input,.fld select{width:100%}
   .modal .acts{display:flex;gap:9px;justify-content:flex-end;margin-top:8px}
   .btn.ghost{background:#fff;color:var(--blue);border:1px solid #cdddf5}
+  .srv.compact{padding:8px 16px;background:#f7fbf8}
+  .srv-sum{font-size:13px;color:#15803d;background:#eafaf0;border:1px solid #bbe7cb;border-radius:7px;padding:2px 9px;cursor:pointer}
+  .ofertas-bar{display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:8px 16px;background:#faf7ff;border-bottom:1px solid #eef0f2}
+  .ofertas-bar .lbl{color:#5b21b6;font-weight:600}
+  .ofertas-bar select{padding:5px 8px;border:1px solid #cdbff0;border-radius:7px;font:inherit;font-size:13px;background:#fff}
+  .chip{display:inline-flex;align-items:center;gap:5px;font-size:13px;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd;border-radius:14px;padding:2px 5px 2px 10px}
+  .chip button{border:0;background:#c4b5fd;color:#fff;border-radius:50%;width:16px;height:16px;line-height:1;cursor:pointer;font-size:12px;padding:0}
+  .chip button:hover{background:#7c3aed}
+  .cal-mes>h2{text-transform:capitalize}
+  .cal-venc{color:var(--bad)}
 </style>
 </head>
 <body>
@@ -209,7 +219,15 @@ const K_TNOTAS = "renov:tareasnotas:v1";
 const K_CMETA = "renov:clientes:v1";
 const K_TOV = "renov:tareasedit:v1";
 const K_TMAN = "renov:tareasman:v1";
-const K_ALL = [K_MARKS, K_TOOLS, K_MAN, K_TNOTAS, K_CMETA, K_TOV, K_TMAN];
+const K_CAT = "renov:catalogo:v1";
+const K_ALL = [K_MARKS, K_TOOLS, K_MAN, K_TNOTAS, K_CMETA, K_TOV, K_TMAN, K_CAT];
+
+// catálogo inicial de servicios ofrecibles (editable, reutilizable para todos los clientes)
+const CATALOGO_DEF = ["Mantenimiento web","Bonos de horas","Posicionamiento SEO","Microsoft 365",
+                      "Antivirus / Seguridad","Backup","Getradi (ERP/CRM)","Hosting / Dominio","Tienda online"];
+// nombre del mes en español desde 'YYYY-MM'
+const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+function mesLabel(ym){ if(!ym||ym.length<7) return "Sin fecha"; const p=ym.split("-"); return MESES[(+p[1])-1]+" "+p[0]; }
 
 const DECISIONES = [
   ["renovar_todos","Renovar todos los años","El servicio se factura cada año de forma indefinida."],
@@ -285,6 +303,8 @@ function App(){
   const [cmeta, setCmeta]   = useState(()=>load(K_CMETA, {}));
   const [tov, setTov]       = useState(()=>load(K_TOV, {}));
   const [tman, setTman]     = useState(()=>load(K_TMAN, []));
+  const [catalogo, setCatalogo] = useState(()=>load(K_CAT, CATALOGO_DEF));
+  const [srvExp, setSrvExp] = useState({});
   const [verHechas, setVerHechas] = useState(false);
   const [agrupAgenda, setAgrupAgenda] = useState(false);
   const [vista, setVista]   = useState("servicios");
@@ -305,6 +325,7 @@ function App(){
   useEffect(()=>save(K_CMETA, cmeta), [cmeta]);
   useEffect(()=>save(K_TOV, tov), [tov]);
   useEffect(()=>save(K_TMAN, tman), [tman]);
+  useEffect(()=>save(K_CAT, catalogo), [catalogo]);
 
   const cm = (cod)=> cmeta[cod] || {};
   const setCM = (cod, patch)=> setCmeta(c=>({...c, [cod]: {...(c[cod]||{}), ...patch}}));
@@ -396,9 +417,22 @@ function App(){
         out.push({key:s.id+"::norenovdom", codigo:s.codigo, cat:"dominio", importe:0, tipo:"No renovar dominio — dejar caducar", cli:s.cliente, srv:dlabel, fecha:(d?d.expira_iso:m.uso_hasta||"")});
       if(m.ofrecer) out.push({key:s.id+"::ofrecer", codigo:s.codigo, cat:"ofrecer", importe:0, tipo:"Ofrecer mantenimiento / bonos", cli:s.cliente, srv:s.tipo, fecha:m.uso_hasta||""});
     });
+    // TAREAS COMERCIALES por cliente: ofertas del catálogo marcadas. Fecha = caducidad más próxima del cliente.
+    const nombreCod = {}, proxCad = {};
+    todos.forEach(s=>{ const m=marks[s.id]||{};
+      if(!nombreCod[s.codigo]) nombreCod[s.codigo]=s.cliente;
+      const dd = DOM_BY[m.dominio||""];
+      const exp = m.uso_hasta || (dd?dd.expira_iso:"") || s.uso_hasta_def || "";
+      if(exp && (!proxCad[s.codigo] || exp < proxCad[s.codigo])) proxCad[s.codigo]=exp;
+    });
+    Object.entries(cmeta).forEach(([cod,v])=>{
+      const ofertas = (v && v.ofertas) || [];
+      if(ofertas.length) out.push({key:"COM__"+cod, codigo:cod, cat:"comercial", importe:0,
+        tipo:"Comercial · ofrecer: "+ofertas.join(", "), cli:nombreCod[cod]||cod, srv:"", fecha:proxCad[cod]||""});
+    });
     out.sort((a,b)=> (a.fecha||"9999-99") < (b.fecha||"9999-99") ? -1 : 1);
     return out;
-  }, [todos, marks]);
+  }, [todos, marks, cmeta]);
 
   const tareasRender = useMemo(()=>{
     const gen = tareas.map(t=>{ const o = tov[t.key]||{};
@@ -411,6 +445,16 @@ function App(){
       .sort((a,b)=> (a.hecho?1:0)-(b.hecho?1:0) || ((a.fecha||"9999")<(b.fecha||"9999")?-1:1));
   }, [tareas, tov, tman, verHechas]);
   const nActivas = tareasRender.filter(t=>!t.hecho).length;
+
+  // calendario: tareas agrupadas por mes (YYYY-MM) según su fecha de caducidad/vencimiento
+  const porMes = useMemo(()=>{
+    const g = {};
+    tareasRender.forEach(t=>{
+      const ym = (t.fecha||"").slice(0,7);
+      (g[ym] = g[ym] || {ym, items:[]}).items.push(t);
+    });
+    return Object.values(g).sort((a,b)=> (a.ym||"9999") < (b.ym||"9999") ? -1 : 1);
+  }, [tareasRender]);
 
   const resumen = useMemo(()=>{
     const g = {};
@@ -502,6 +546,16 @@ function App(){
     const n = prompt("Nueva herramienta:");
     if(n && !tools.includes(n)) setTools([...tools, n]);
   }
+  function addCatalogo(){
+    const n = prompt("Nuevo servicio para el catálogo (se podrá ofrecer a cualquier cliente):");
+    if(n && !catalogo.includes(n)) setCatalogo([...catalogo, n].sort((a,b)=>a.localeCompare(b)));
+    return n||"";
+  }
+  // alterna una oferta del catálogo en un cliente
+  function toggleOferta(cod, val){
+    setCM(cod, {ofertas: (()=>{ const cur=(cmeta[cod]||{}).ofertas||[];
+      return cur.includes(val) ? cur.filter(x=>x!==val) : [...cur, val]; })()});
+  }
 
   function addServicioManual({modo, codigo, cliente, tipo, periodicidad, importe, fecha}){
     const nuevo = modo==="nuevo";
@@ -552,6 +606,7 @@ function App(){
           <button aria-pressed={vista==="agenda"} onClick={()=>setVista("agenda")}>Agenda</button>
           <button aria-pressed={vista==="kanban"} onClick={()=>setVista("kanban")}>Kanban</button>
           <button aria-pressed={vista==="resumen"} onClick={()=>setVista("resumen")}>Resumen</button>
+          <button aria-pressed={vista==="calendario"} onClick={()=>setVista("calendario")}>Calendario</button>
         </span>
         {vista==="servicios" && <button className="btn" onClick={()=>setModalAlta(true)}>+ Añadir servicio manual</button>}
         {vista==="servicios" && <button className="btn" onClick={()=>colapsarTodo(true)}>Contraer todo</button>}
@@ -608,10 +663,24 @@ function App(){
                 <button className="link add" onClick={()=>setModalAlta(g.codigo)}>+ Añadir servicio</button>
               </span>
             </h2>
+            {!v.collapsed && <div className="ofertas-bar">
+              <span className="lbl">Ofrecer otros servicios:</span>
+              {(v.ofertas||[]).map(o=>(
+                <span className="chip" key={o}>{o}<button title="Quitar" onClick={()=>toggleOferta(g.codigo,o)}>×</button></span>
+              ))}
+              <select value="" onChange={e=>{ const val=e.target.value; if(!val) return;
+                if(val==="__add"){ const n=addCatalogo(); if(n) toggleOferta(g.codigo,n); }
+                else toggleOferta(g.codigo,val); }} title="Marca servicios a ofrecer a este cliente (genera una tarea comercial)">
+                <option value="">+ añadir oferta…</option>
+                {catalogo.filter(o=>!(v.ofertas||[]).includes(o)).map(o=><option key={o} value={o}>{o}</option>)}
+                <option value="__add">+ nuevo en catálogo…</option>
+              </select>
+            </div>}
             {!v.collapsed && g.items.map(s=>(
               <Servicio key={s.id} s={s} m={marks[s.id]||{}} tools={tools} addTool={addTool}
                         open={!!open[s.id]} toggle={()=>setOpen(o=>({...o,[s.id]:!o[s.id]}))}
                         domUsage={domUsage} addTarea={()=>addTareaCtx(s.cliente, s.tipo)}
+                        expanded={!!srvExp[s.id]} toggleExpand={()=>setSrvExp(o=>({...o,[s.id]:!o[s.id]}))}
                         set={patch=>setMark(s.id, patch)} />
             ))}
           </section>
@@ -708,6 +777,27 @@ function App(){
           onEstado={(cod,estado)=>setCM(cod,{estado})}
           onRevisado={(cod,val)=>setCM(cod,{revisado:val})}
           onAbrir={abrirFicha} />}
+
+        {vista==="calendario" && <section className="agenda-page cal-page">
+          <p className="muted" style={{fontSize:13,margin:"0 0 12px"}}>Acciones (facturar, hablar, no renovar, comercial…) ordenadas por mes según la fecha de caducidad/vencimiento. Edita fecha y título como en la agenda.</p>
+          {porMes.length===0 && <p className="muted">Sin acciones con fecha. Marca años a facturar, ofertas o crea tareas.</p>}
+          {porMes.map(grp=>{
+            const venc = grp.ym && grp.ym < HOY.slice(0,7);
+            return (
+            <section className="cli cal-mes" key={grp.ym||"__sin"}>
+              <h2><span className="cli-head"><b className={venc?"cal-venc":""}>{mesLabel(grp.ym)}</b>
+                <span className="cod">· {grp.items.filter(t=>!t.hecho).length} acciones</span></span></h2>
+              <ul className="res-list">
+                {grp.items.map((t,i)=>(
+                  <TaskRow key={t.key||i} t={t}
+                    nota={tnotas[t.key]||""} setNota={val=>setTnotas(n=>({...n,[t.key]:val}))}
+                    edit={patch=>editTarea(t,patch)} del={()=>borrarTarea(t)} />
+                ))}
+              </ul>
+            </section>
+            );
+          })}
+        </section>}
       </main>
       {modalAlta && <AltaManualForm
         clientes={clientesLista}
@@ -829,8 +919,9 @@ function Kanban({data, cols, total, nRevisados, sinRev, conEur, setSinRev, setCo
   );
 }
 
-function Servicio({s, m, tools, addTool, open, toggle, set, domUsage, addTarea}){
+function Servicio({s, m, tools, addTool, open, toggle, set, domUsage, addTarea, expanded, toggleExpand}){
   const decidido = esDecidido(s, m);
+  const compact = decidido && !expanded;   // auto-colapso de servicios ya decididos
   const desde = m.desde_anio || s.desde_anio || 9999;
   const dom = (m.dominio||"").trim();
   const dupOtros = (dom && domUsage && domUsage[dom])
@@ -838,9 +929,20 @@ function Servicio({s, m, tools, addTool, open, toggle, set, domUsage, addTarea})
   const ay = m.ay || {};
   const setAY = (a, patch)=> set({ay:{...ay, [String(a)]:{...(ay[String(a)]||{}), ...patch}}});
   const badge = s.origen==="KD" ? "b-kd" : (s.origen==="Recurrente" ? "b-rec" : "b-man");
+  // resumen de una línea para el modo colapsado
+  function resumenDec(){
+    const parts=[];
+    const sis = ANIOS.filter(a=> (ay[String(a)]||{}).f==="si");
+    if(sis.length) parts.push("Facturar "+sis.join(", "));
+    if(m.dejar_caducar) parts.push("No renovar dominio");
+    if(m.ofrecer) parts.push("Ofrecer mant./bonos");
+    if(m.propio) parts.push("Propio");
+    return parts.length ? parts.join(" · ") : "decidido";
+  }
   return (
-    <div className={"srv"+(decidido?" decided":"")}>
+    <div className={"srv"+(decidido?" decided":"")+(compact?" compact":"")}>
       <div className="row1">
+        {decidido && <button className="caret" title={compact?"Expandir servicio":"Contraer servicio"} aria-label={compact?"Expandir":"Contraer"} onClick={toggleExpand}>{compact?"▸":"▾"}</button>}
         <span className="tipo">{s.tipo}</span>
         <span className={"badge "+badge}>{s.origen}</span>
         {s.ultima_fecha && <span className="muted" style={{fontSize:13}}>Últ. factura: {fmt(s.ultima_fecha)} <Help t="Fecha de la última factura de este servicio. Es la referencia para saber cuándo toca renovar."/></span>}
@@ -849,7 +951,9 @@ function Servicio({s, m, tools, addTool, open, toggle, set, domUsage, addTarea})
         {m.propio && <span className="badge b-prop">propio / no facturable</span>}
         {m.dejar_caducar && <span className="badge b-dup">no renovar dominio</span>}
         {dupOtros.length>0 && <span className="badge b-dup" title={"Mismo dominio asignado también a: "+dupOtros.join(", ")}>⚠ dominio en otro cliente</span>}
+        {compact && <span className="srv-sum" onClick={toggleExpand} title="Clic para expandir">{resumenDec()}</span>}
       </div>
+      {!compact && <React.Fragment>
       {s.lineas && s.lineas.length>0 && (
         <div className="lineas">
           {s.lineas.map((ln,i)=>(
@@ -970,6 +1074,7 @@ function Servicio({s, m, tools, addTool, open, toggle, set, domUsage, addTarea})
           </div>
         </div>
       )}
+      </React.Fragment>}
     </div>
   );
 }
