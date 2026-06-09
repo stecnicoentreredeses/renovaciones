@@ -64,6 +64,10 @@
   .b-rec{color:var(--ok);border-color:var(--ok);background:var(--okbg)}
   .b-man{color:#5b21b6;border-color:#5b21b6;background:#ede9fe}
   .b-cli{color:#0369a1;border-color:#0369a1;background:#e0f2fe}
+  .b-prop{color:#3730a3;border-color:#6366f1;background:#e0e7ff}
+  .b-dup{color:#b42318;border-color:#f5c2c7;background:#fdeced}
+  .b-nota{color:#92400e;border-color:#fcd9a8;background:#fff4e5}
+  .kb-tag.nota{background:#fff4e5;border-color:#ffd9a8}
   .lineas{margin:5px 0 0;display:flex;flex-wrap:wrap;gap:5px 9px}
   .ln{font-size:13px;color:#666;background:#f5f6f8;border:1px solid #eaecef;border-radius:5px;
       padding:2px 8px;max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:help}
@@ -237,10 +241,11 @@ function fmt(iso){ if(!iso||String(iso).length<10) return iso||""; const p=Strin
 function Help({t}){ return <span className="help" title={t} role="img" aria-label={"Ayuda: "+t}>i</span>; }
 // importe de un año (en datos las claves son string)
 function impAnio(s,a){ const x=s.anios||{}; return x[a]||x[String(a)]||0; }
-// años facturables: desde 'desde_anio' en adelante y sin factura historica
-function aniosFacturables(s){ const d=s.desde_anio||9999; return ANIOS.filter(a=> a>=d && !impAnio(s,a)); }
+// años facturables: desde 'desde_anio' en adelante y sin factura historica.
+// m.desde_anio (override del usuario) tiene prioridad sobre el calculado.
+function aniosFacturables(s,m){ const d=(m&&m.desde_anio)||s.desde_anio||9999; return ANIOS.filter(a=> a>=d && !impAnio(s,a)); }
 // ¿el servicio tiene alguna decisión tomada?
-function esDecidido(s,m){ const ay=m.ay||{}; return aniosFacturables(s).some(a=> ay[String(a)] && ay[String(a)].f) || !!m.ofrecer; }
+function esDecidido(s,m){ const ay=m.ay||{}; return aniosFacturables(s,m).some(a=> ay[String(a)] && ay[String(a)].f) || !!m.ofrecer; }
 // aniversario: mismo dia/mes que la ultima factura pero en el año dado
 function aniversario(ultimaISO, anio){
   if(ultimaISO && ultimaISO.length>=10){ return anio+"-"+ultimaISO.slice(5,10); }
@@ -278,6 +283,7 @@ function App(){
   const [tov, setTov]       = useState(()=>load(K_TOV, {}));
   const [tman, setTman]     = useState(()=>load(K_TMAN, []));
   const [verHechas, setVerHechas] = useState(false);
+  const [agrupAgenda, setAgrupAgenda] = useState(false);
   const [vista, setVista]   = useState("servicios");
   const [q, setQ]           = useState("");
   const [fDec, setFDec]     = useState("");
@@ -303,9 +309,10 @@ function App(){
   const setTO = (key, patch)=> setTov(o=>({...o, [key]: {...(o[key]||{}), ...patch}}));
   const setMan = (key, patch)=> setTman(ts=>ts.map(t=>t.key===key?{...t, ...patch}:t));
   function editTarea(t, patch){ t.manual ? setMan(t.key, patch) : setTO(t.key, patch); }
-  function addTarea(){
-    const titulo = prompt("Nueva tarea:"); if(!titulo) return;
-    setTman(ts=>[...ts, {key:"TMAN__"+Date.now(), titulo, fecha:"", cli:"", srv:"", manual:true}]);
+  function addTarea(){ addTareaCtx("", ""); }
+  function addTareaCtx(cli, srv){
+    const titulo = prompt("Nueva tarea"+(cli?" para "+cli:"")+(srv?" ("+srv+")":"")+":"); if(!titulo) return;
+    setTman(ts=>[...ts, {key:"TMAN__"+Date.now(), titulo, fecha:"", cli:cli||"", srv:srv||"", manual:true}]);
   }
   function borrarTarea(t){ if(t.manual) setTman(ts=>ts.filter(x=>x.key!==t.key)); else setTO(t.key,{oculta:true}); }
 
@@ -318,6 +325,20 @@ function App(){
   }, [todos]);
 
   const setMark = (id, patch)=> setMarks(m=>({...m, [id]: {...(m[id]||{}), ...patch}}));
+
+  // dominio -> { codigo: cliente } — para avisar de dominios usados en >1 cliente
+  const domUsage = useMemo(()=>{
+    const map = {};
+    todos.forEach(s=>{ const dn=((marks[s.id]||{}).dominio||"").trim(); if(!dn) return;
+      (map[dn] = map[dn] || {})[s.codigo] = s.cliente; });
+    return map;
+  }, [todos, marks]);
+  // codigos de clientes con al menos una nota en algún servicio
+  const codConNota = useMemo(()=>{
+    const set = {};
+    todos.forEach(s=>{ if(((marks[s.id]||{}).nota||"").trim()) set[s.codigo]=true; });
+    return set;
+  }, [todos, marks]);
 
   const filtrados = useMemo(()=>{
     const t = q.trim().toLowerCase();
@@ -354,7 +375,7 @@ function App(){
       const ay = m.ay||{};
       const d = DOM_BY[m.dominio||""];
       const dlabel = m.dominio ? (m.dominio + (d?" ("+d.prov+")":"")) : s.tipo;
-      const fact = aniosFacturables(s);
+      const fact = aniosFacturables(s,m);
       let haySi=false, hayNo=false;
       fact.forEach(a=>{
         const y = ay[String(a)]||{};
@@ -411,13 +432,14 @@ function App(){
     return codigosTodos.map(cod=>{
       const v = cmeta[cod]||{}; const r = porCod[cod]||{};
       return { codigo:cod, cliente:nombre[cod]||cod, nServ:nServ[cod]||0,
-               total:r.total||0, prox:r.prox||"", estado:v.estado||"", revisado:!!v.revisado };
+               total:r.total||0, prox:r.prox||"", estado:v.estado||"", revisado:!!v.revisado,
+               tieneNota:!!codConNota[cod] };
     }).filter(c=>{
       if(ocultarRev && c.revisado) return false;
       if(t && !(c.cliente.toLowerCase().includes(t) || (c.codigo||"").toLowerCase().includes(t))) return false;
       return true;
     }).sort((a,b)=>a.cliente.localeCompare(b.cliente));
-  }, [codigosTodos, cmeta, resumen, todos, q, ocultarRev]);
+  }, [codigosTodos, cmeta, resumen, todos, q, ocultarRev, codConNota]);
 
   function exportar(){
     const dec = todos.filter(s=>marks[s.id] || s.origen==="Manual").map(s=>{
@@ -425,13 +447,14 @@ function App(){
       const dom = DOM_BY[m.dominio||""]||{};
       const ay = m.ay||{};
       const por_anio = {};
-      aniosFacturables(s).forEach(a=>{ const y=ay[String(a)]; if(y && (y.f||y.imp!=null))
+      aniosFacturables(s,m).forEach(a=>{ const y=ay[String(a)]; if(y && (y.f||y.imp!=null))
         por_anio[a] = {facturar:y.f||"", importe:(y.imp!=null&&y.imp!=="")?y.imp:(s.importe_sug||0)}; });
       return {
         codigo:s.codigo, cliente:s.cliente, tipo:m.tipo??s.tipo, categoria:s.categoria, origen:s.origen,
         herramienta:m.herramienta||"", dominio:m.dominio||"",
         hosting:m.hosting||dom.prov||"", dominio_expira:dom.expira||"",
-        lo_paga_cliente:!!m.lo_paga_cliente, ofrecer:!!m.ofrecer, activado:m.activado||"",
+        lo_paga_cliente:!!m.lo_paga_cliente, propio:!!m.propio, ofrecer:!!m.ofrecer, activado:m.activado||"",
+        desde_anio:m.desde_anio||s.desde_anio||null,
         periodicidad:m.periodicidad||"anual", uso_hasta:m.uso_hasta||s.uso_hasta_def||"", nota:m.nota||"",
         anios_facturados:s.anios||{}, anios_a_facturar:por_anio
       };
@@ -569,6 +592,7 @@ function App(){
                 <span className="cod">· {nDec}/{g.items.length} decididos</span>
                 {v.revisado && <span className="badge b-rec">✓ revisado</span>}
                 {v.estado && est && <span className={"badge b-est est-"+v.estado}>{est[1]}</span>}
+                {codConNota[g.codigo] && <span className="badge b-nota" title="Tiene notas en algún servicio">📝 nota</span>}
               </span>
               <span className="cli-actions">
                 <select value={v.estado||""} onChange={e=>setCM(g.codigo,{estado:e.target.value})} title="Estado de gestión del cliente">
@@ -577,12 +601,14 @@ function App(){
                 <label className="chk" style={{paddingTop:0}} title="Marca cuando hayas revisado todos sus servicios">
                   <input type="checkbox" checked={!!v.revisado} onChange={e=>setCM(g.codigo,{revisado:e.target.checked, collapsed:e.target.checked})} /> Revisado
                 </label>
+                <button className="link add" onClick={()=>addTareaCtx(g.cliente, "")} title="Crear una tarea para este cliente">+ tarea</button>
                 <button className="link add" onClick={()=>setModalAlta(g.codigo)}>+ Añadir servicio</button>
               </span>
             </h2>
             {!v.collapsed && g.items.map(s=>(
               <Servicio key={s.id} s={s} m={marks[s.id]||{}} tools={tools} addTool={addTool}
                         open={!!open[s.id]} toggle={()=>setOpen(o=>({...o,[s.id]:!o[s.id]}))}
+                        domUsage={domUsage} addTarea={()=>addTareaCtx(s.cliente, s.tipo)}
                         set={patch=>setMark(s.id, patch)} />
             ))}
           </section>
@@ -630,17 +656,46 @@ function App(){
         {vista==="agenda" && <section className="agenda-page">
           <div className="agenda-tools">
             <label className="chk" style={{paddingTop:0}}><input type="checkbox" checked={verHechas} onChange={e=>setVerHechas(e.target.checked)} /> ver hechas</label>
+            <label className="chk" style={{paddingTop:0}}><input type="checkbox" checked={agrupAgenda} onChange={e=>setAgrupAgenda(e.target.checked)} /> agrupar por cliente</label>
             <button className="btn" onClick={addTarea}>+ tarea</button>
           </div>
           <h3 className="agenda-h">Agenda de tareas ({nActivas})</h3>
-          <ul className="agenda-list">
+          {!agrupAgenda && <ul className="agenda-list">
             {tareasRender.length===0 && <li className="muted">Sin tareas. Marca años a facturar (Sí), "Ofrecer mant./bonos" o pulsa "+ tarea".</li>}
             {tareasRender.map((t,i)=>(
               <TaskRow key={t.key||i} t={t}
                 nota={tnotas[t.key]||""} setNota={val=>setTnotas(n=>({...n,[t.key]:val}))}
                 edit={patch=>editTarea(t,patch)} del={()=>borrarTarea(t)} />
             ))}
-          </ul>
+          </ul>}
+          {agrupAgenda && <React.Fragment>
+            {resumen.length===0 && <p className="muted">Sin tareas. Marca años a facturar (Sí), "Ofrecer mant./bonos" o pulsa "+ tarea".</p>}
+            {resumen.map(g=>{
+              const v = g.codigo ? cm(g.codigo) : {};
+              const est = CLI_ESTADOS.find(([x])=>x===(v.estado||""));
+              return (
+              <section className="cli res-cli" key={g.codigo||"__gen"}>
+                <h2>
+                  <span className="cli-head">
+                    <b>{g.cliente}</b> {g.codigo && <span className="cod">{g.codigo}</span>}
+                    {v.estado && est && <span className={"badge b-est est-"+v.estado}>{est[1]}</span>}
+                  </span>
+                  <span className="cli-actions">
+                    {g.total>0 && <span className="res-total">A facturar: {Math.round(g.total).toLocaleString("es-ES")} €</span>}
+                    <span className="cod">{g.items.filter(t=>!t.hecho).length} acciones</span>
+                  </span>
+                </h2>
+                <ul className="res-list">
+                  {g.items.map((t,i)=>(
+                    <TaskRow key={t.key||i} t={t} ctx={true}
+                      nota={tnotas[t.key]||""} setNota={val=>setTnotas(n=>({...n,[t.key]:val}))}
+                      edit={patch=>editTarea(t,patch)} del={()=>borrarTarea(t)} />
+                  ))}
+                </ul>
+              </section>
+              );
+            })}
+          </React.Fragment>}
         </section>}
 
         {vista==="kanban" && <Kanban
@@ -750,6 +805,7 @@ function Kanban({data, cols, total, nRevisados, sinRev, conEur, setSinRev, setCo
                     <span className="kb-tag">{c.nServ} {c.nServ===1?"servicio":"servicios"}</span>
                     {c.total>0 && <span className="kb-tag eur">{Math.round(c.total)} €</span>}
                     {c.prox && <span className="kb-tag fch">{fmt(c.prox)}</span>}
+                    {c.tieneNota && <span className="kb-tag nota" title="Tiene notas">📝</span>}
                   </div>
                   <div className="kb-foot">
                     <label className={"kb-rev "+(c.revisado?"yes":"no")}>
@@ -770,9 +826,12 @@ function Kanban({data, cols, total, nRevisados, sinRev, conEur, setSinRev, setCo
   );
 }
 
-function Servicio({s, m, tools, addTool, open, toggle, set}){
+function Servicio({s, m, tools, addTool, open, toggle, set, domUsage, addTarea}){
   const decidido = esDecidido(s, m);
-  const desde = s.desde_anio || 9999;
+  const desde = m.desde_anio || s.desde_anio || 9999;
+  const dom = (m.dominio||"").trim();
+  const dupOtros = (dom && domUsage && domUsage[dom])
+    ? Object.entries(domUsage[dom]).filter(([cod])=>cod!==s.codigo).map(([cod,nom])=>nom) : [];
   const ay = m.ay || {};
   const setAY = (a, patch)=> set({ay:{...ay, [String(a)]:{...(ay[String(a)]||{}), ...patch}}});
   const badge = s.origen==="KD" ? "b-kd" : (s.origen==="Recurrente" ? "b-rec" : "b-man");
@@ -784,6 +843,8 @@ function Servicio({s, m, tools, addTool, open, toggle, set}){
         {s.ultima_fecha && <span className="muted" style={{fontSize:13}}>Últ. factura: {fmt(s.ultima_fecha)} <Help t="Fecha de la última factura de este servicio. Es la referencia para saber cuándo toca renovar."/></span>}
         {m.lo_paga_cliente && <span className="badge b-cli">paga el cliente</span>}
         {m.ofrecer && <span className="badge b-man">ofrecer mant./bonos</span>}
+        {m.propio && <span className="badge b-prop">propio / no facturable</span>}
+        {dupOtros.length>0 && <span className="badge b-dup" title={"Mismo dominio asignado también a: "+dupOtros.join(", ")}>⚠ dominio en otro cliente</span>}
       </div>
       {s.lineas && s.lineas.length>0 && (
         <div className="lineas">
@@ -821,6 +882,7 @@ function Servicio({s, m, tools, addTool, open, toggle, set}){
         <label className="chk ofr" title="Independiente de la decisión: ofrecer mantenimiento, bonos de horas o facturar horas usadas. Puede convivir con regularizar años anteriores.">
           <input type="checkbox" checked={!!m.ofrecer} onChange={e=>set({ofrecer:e.target.checked})} /> Ofrecer mant./bonos
         </label>
+        <button className="link" onClick={addTarea} title="Crear una tarea ligada a este servicio">+ tarea</button>
         <button className="link" onClick={toggle}>{open?"▲ ocultar ficha":"▼ ficha"}</button>
       </div>
 
@@ -829,6 +891,17 @@ function Servicio({s, m, tools, addTool, open, toggle, set}){
           <div>
             <label>Tipo servicio <Help t="Nombre del servicio (lo detectó el sistema). Corrígelo si se ha clasificado mal."/></label>
             <input value={m.tipo??s.tipo} onChange={e=>set({tipo:e.target.value})} />
+          </div>
+          <div>
+            <label>Facturar desde (año) <Help t="Primer año que puedes marcar para facturar. Bájalo para regularizar años anteriores (servicios que empezaron antes de lo detectado)."/></label>
+            <select value={m.desde_anio||""} onChange={e=>set({desde_anio: e.target.value?Number(e.target.value):null})}>
+              <option value="">por defecto ({s.desde_anio||"—"})</option>
+              {ANIOS.map(a=><option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+          <div>
+            <label>Servicio propio <Help t="Márcalo si este servicio es tuyo/interno y NO se factura al cliente. Distinto de 'lo paga el cliente directamente al proveedor'."/></label>
+            <label className="chk"><input type="checkbox" checked={!!m.propio} onChange={e=>set({propio:e.target.checked})} /> Propio / interno (no facturable)</label>
           </div>
           {s.categoria==="erp" && (
             <div>
