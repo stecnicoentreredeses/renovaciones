@@ -191,6 +191,8 @@
   .btn.ghost{background:#fff;color:var(--blue);border:1px solid #cdddf5}
   .srv.compact{padding:8px 16px;background:#f7fbf8}
   .srv-sum{font-size:13px;color:#15803d;background:#eafaf0;border:1px solid #bbe7cb;border-radius:7px;padding:2px 9px;cursor:pointer}
+  .srv-est{font-size:12.5px;padding:3px 7px;border:1px solid #bcbcbc;border-radius:7px;font:inherit;font-weight:500;background:#fff}
+  select.srv-est.est-hablar,select.srv-est.est-pdte_fact,select.srv-est.est-facturado,select.srv-est.est-terminado,select.srv-est.est-kd_fin{font-weight:600}
   .ofertas-bar{display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:8px 16px;background:#faf7ff;border-bottom:1px solid #eef0f2}
   .ofertas-bar .lbl{color:#5b21b6;font-weight:600}
   .ofertas-bar select{padding:5px 8px;border:1px solid #cdbff0;border-radius:7px;font:inherit;font-size:13px;background:#fff}
@@ -501,7 +503,7 @@ function App(){
         herramienta:m.herramienta||"", dominio:m.dominio||"",
         hosting:m.hosting||dom.prov||"", dominio_expira:dom.expira||"",
         lo_paga_cliente:!!m.lo_paga_cliente, propio:!!m.propio, ofrecer:!!m.ofrecer, activado:m.activado||"",
-        dejar_caducar:!!m.dejar_caducar, desde_anio:m.desde_anio||s.desde_anio||null,
+        estado_servicio:m.estado||"", dejar_caducar:!!m.dejar_caducar, desde_anio:m.desde_anio||s.desde_anio||null,
         periodicidad:m.periodicidad||"anual", uso_hasta:m.uso_hasta||s.uso_hasta_def||"", nota:m.nota||"",
         anios_facturados:s.anios||{}, anios_a_facturar:por_anio
       };
@@ -641,6 +643,9 @@ function App(){
           const v = cm(g.codigo);
           const nDec = g.items.filter(s=>esDecidido(s, marks[s.id]||{})).length;
           const est = CLI_ESTADOS.find(([x])=>x===(v.estado||""));
+          const estCnt = {};
+          g.items.forEach(s=>{ const e=(marks[s.id]||{}).estado; if(e) estCnt[e]=(estCnt[e]||0)+1; });
+          const estSrvTxt = Object.entries(estCnt).map(([e,n])=>n+" "+((CLI_ESTADOS.find(([x])=>x===e)||[])[1]||e)).join(" · ");
           return (
           <section className={"cli"+(v.revisado?" rev":"")} key={g.codigo}>
             <h2>
@@ -651,6 +656,7 @@ function App(){
                 {v.revisado && <span className="badge b-rec">✓ revisado</span>}
                 {v.estado && est && <span className={"badge b-est est-"+v.estado}>{est[1]}</span>}
                 {codConNota[g.codigo] && <span className="badge b-nota" title="Tiene notas en algún servicio">📝 nota</span>}
+                {estSrvTxt && <span className="cod" title="Estados de los servicios">· servicios: {estSrvTxt}</span>}
               </span>
               <span className="cli-actions">
                 <select value={v.estado||""} onChange={e=>setCM(g.codigo,{estado:e.target.value})} title="Estado de gestión del cliente">
@@ -951,6 +957,9 @@ function Servicio({s, m, tools, addTool, open, toggle, set, domUsage, addTarea, 
         {m.propio && <span className="badge b-prop">propio / no facturable</span>}
         {m.dejar_caducar && <span className="badge b-dup">no renovar dominio</span>}
         {dupOtros.length>0 && <span className="badge b-dup" title={"Mismo dominio asignado también a: "+dupOtros.join(", ")}>⚠ dominio en otro cliente</span>}
+        <select className={"srv-est"+(m.estado?" est-"+m.estado:"")} value={m.estado||""} onChange={e=>set({estado:e.target.value})} title="Estado de este servicio (independiente del estado del cliente)">
+          {CLI_ESTADOS.map(([x,l])=><option key={x} value={x}>{l}</option>)}
+        </select>
         {compact && <span className="srv-sum" onClick={toggleExpand} title="Clic para expandir">{resumenDec()}</span>}
       </div>
       {!compact && <React.Fragment>
