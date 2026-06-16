@@ -194,9 +194,14 @@
   .srv-sum{font-size:13px;color:#15803d;background:#eafaf0;border:1px solid #bbe7cb;border-radius:7px;padding:2px 9px;cursor:pointer}
   .srv-est{font-size:12.5px;padding:3px 7px;border:1px solid #bcbcbc;border-radius:7px;font:inherit;font-weight:500;background:#fff}
   select.srv-est.est-hablar,select.srv-est.est-pdte_fact,select.srv-est.est-facturado,select.srv-est.est-terminado,select.srv-est.est-kd_fin{font-weight:600}
-  .ofertas-bar{display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:8px 16px;background:#faf7ff;border-bottom:1px solid #eef0f2}
-  .ofertas-bar .lbl{color:#5b21b6;font-weight:600}
+  .ofertas-bar{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px;padding:8px 16px;background:#faf7ff;border-bottom:1px solid #eef0f2}
+  .ofertas-bar .lbl{color:#5b21b6;font-weight:600;padding-top:5px}
   .ofertas-bar select{padding:5px 8px;border:1px solid #cdbff0;border-radius:7px;font:inherit;font-size:13px;background:#fff}
+  .ofertas-list{display:flex;flex-direction:column;gap:6px;flex:1;min-width:280px}
+  .oferta-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .oferta-row .chip{flex:0 0 auto}
+  .oferta-why{flex:1;min-width:220px;padding:5px 9px;border:1px solid #cdbff0;border-radius:7px;font:inherit;font-size:13px}
+  .oferta-add{align-self:flex-start}
   .chip{display:inline-flex;align-items:center;gap:5px;font-size:13px;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd;border-radius:14px;padding:2px 5px 2px 10px}
   .chip button{border:0;background:#c4b5fd;color:#fff;border-radius:50%;width:16px;height:16px;line-height:1;cursor:pointer;font-size:12px;padding:0}
   .chip button:hover{background:#7c3aed}
@@ -281,6 +286,8 @@ function proximoFacturar(por_anio){
   const prox = futuro || sis[sis.length-1];
   return {anio:prox[0], importe:prox[1]};
 }
+// normaliza ofertas a [{srv, motivo}] (compatibilidad con datos antiguos que eran strings)
+function normOfertas(arr){ return (arr||[]).map(o=> typeof o==="string" ? {srv:o, motivo:""} : {srv:o.srv, motivo:o.motivo||""}); }
 // aniversario: mismo dia/mes que la ultima factura pero en el año dado
 function aniversario(ultimaISO, anio){
   if(ultimaISO && ultimaISO.length>=10){ return anio+"-"+ultimaISO.slice(5,10); }
@@ -440,9 +447,10 @@ function App(){
       if(exp && (!proxCad[s.codigo] || exp < proxCad[s.codigo])) proxCad[s.codigo]=exp;
     });
     Object.entries(cmeta).forEach(([cod,v])=>{
-      const ofertas = (v && v.ofertas) || [];
+      const ofertas = normOfertas(v && v.ofertas);
       if(ofertas.length) out.push({key:"COM__"+cod, codigo:cod, cat:"comercial", importe:0,
-        tipo:"Comercial · ofrecer: "+ofertas.join(", "), cli:nombreCod[cod]||cod, srv:"", fecha:proxCad[cod]||""});
+        tipo:"Comercial · ofrecer: "+ofertas.map(o=>o.motivo?o.srv+" ("+o.motivo+")":o.srv).join("; "),
+        cli:nombreCod[cod]||cod, srv:"", fecha:proxCad[cod]||""});
     });
     out.sort((a,b)=> (a.fecha||"9999-99") < (b.fecha||"9999-99") ? -1 : 1);
     return out;
@@ -525,7 +533,7 @@ function App(){
     });
     const tareas_exp = tareasRender.map(t=>({titulo:t.titulo, fecha:t.fecha, cli:t.cli||"", srv:t.srv||"", hecho:!!t.hecho, manual:!!t.manual, nota:tnotas[t.key]||""}));
     const clientes_exp = Object.entries(cmeta).filter(([k,v])=>v && (v.revisado||v.estado||(v.ofertas&&v.ofertas.length)))
-      .map(([cod,v])=>({codigo:cod, revisado:!!v.revisado, estado:v.estado||"", ofertas:v.ofertas||[]}));
+      .map(([cod,v])=>({codigo:cod, revisado:!!v.revisado, estado:v.estado||"", ofertas:normOfertas(v.ofertas)}));
     const blob = new Blob([JSON.stringify({generado:HOY, decisiones:dec, tareas:tareas_exp, clientes:clientes_exp}, null, 2)], {type:"application/json"});
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob); a.download = "decisiones_renovaciones.json"; a.click();
@@ -568,10 +576,17 @@ function App(){
     if(n && !catalogo.includes(n)) setCatalogo([...catalogo, n].sort((a,b)=>a.localeCompare(b)));
     return n||"";
   }
-  // alterna una oferta del catálogo en un cliente
-  function toggleOferta(cod, val){
-    setCM(cod, {ofertas: (()=>{ const cur=(cmeta[cod]||{}).ofertas||[];
-      return cur.includes(val) ? cur.filter(x=>x!==val) : [...cur, val]; })()});
+  // ofertas comerciales de un cliente: [{srv, motivo}]
+  function addOferta(cod, srv){
+    const cur = normOfertas((cmeta[cod]||{}).ofertas);
+    if(cur.some(x=>x.srv===srv)) return;
+    setCM(cod, {ofertas:[...cur, {srv, motivo:""}]});
+  }
+  function removeOferta(cod, srv){
+    setCM(cod, {ofertas: normOfertas((cmeta[cod]||{}).ofertas).filter(x=>x.srv!==srv)});
+  }
+  function setMotivoOferta(cod, srv, motivo){
+    setCM(cod, {ofertas: normOfertas((cmeta[cod]||{}).ofertas).map(x=>x.srv===srv?{...x, motivo}:x)});
   }
 
   function addServicioManual({modo, codigo, cliente, tipo, periodicidad, importe, fecha}){
@@ -686,16 +701,22 @@ function App(){
             </h2>
             {!v.collapsed && <div className="ofertas-bar">
               <span className="lbl">Ofrecer otros servicios:</span>
-              {(v.ofertas||[]).map(o=>(
-                <span className="chip" key={o}>{o}<button title="Quitar" onClick={()=>toggleOferta(g.codigo,o)}>×</button></span>
-              ))}
-              <select value="" onChange={e=>{ const val=e.target.value; if(!val) return;
-                if(val==="__add"){ const n=addCatalogo(); if(n) toggleOferta(g.codigo,n); }
-                else toggleOferta(g.codigo,val); }} title="Marca servicios a ofrecer a este cliente (genera una tarea comercial)">
-                <option value="">+ añadir oferta…</option>
-                {catalogo.filter(o=>!(v.ofertas||[]).includes(o)).map(o=><option key={o} value={o}>{o}</option>)}
-                <option value="__add">+ nuevo en catálogo…</option>
-              </select>
+              <div className="ofertas-list">
+                {normOfertas(v.ofertas).map(o=>(
+                  <div className="oferta-row" key={o.srv}>
+                    <span className="chip">{o.srv}<button title="Quitar" onClick={()=>removeOferta(g.codigo,o.srv)}>×</button></span>
+                    <input className="oferta-why" placeholder="¿por qué es interesante ofrecerlo?"
+                           value={o.motivo} onChange={e=>setMotivoOferta(g.codigo,o.srv,e.target.value)} />
+                  </div>
+                ))}
+                <select className="oferta-add" value="" onChange={e=>{ const val=e.target.value; if(!val) return;
+                  if(val==="__add"){ const n=addCatalogo(); if(n) addOferta(g.codigo,n); }
+                  else addOferta(g.codigo,val); }} title="Añade servicios a ofrecer a este cliente (genera una tarea comercial)">
+                  <option value="">+ añadir oferta…</option>
+                  {catalogo.filter(o=>!normOfertas(v.ofertas).some(x=>x.srv===o)).map(o=><option key={o} value={o}>{o}</option>)}
+                  <option value="__add">+ nuevo en catálogo…</option>
+                </select>
+              </div>
             </div>}
             {!v.collapsed && g.items.map(s=>(
               <Servicio key={s.id} s={s} m={marks[s.id]||{}} tools={tools} addTool={addTool}
