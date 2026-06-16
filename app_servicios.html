@@ -68,6 +68,7 @@
   .b-prop{color:#3730a3;border-color:#6366f1;background:#e0e7ff}
   .b-dup{color:#b42318;border-color:#f5c2c7;background:#fdeced}
   .b-nota{color:#92400e;border-color:#fcd9a8;background:#fff4e5}
+  .b-nr{color:#6b7280;border-color:#cbd1d9;background:#eef0f2}
   .kb-tag.nota{background:#fff4e5;border-color:#ffd9a8}
   .lineas{margin:5px 0 0;display:flex;flex-wrap:wrap;gap:5px 9px}
   .ln{font-size:13px;color:#666;background:#f5f6f8;border:1px solid #eaecef;border-radius:5px;
@@ -269,6 +270,17 @@ function impAnio(s,a){ const x=s.anios||{}; return x[a]||x[String(a)]||0; }
 function aniosFacturables(s,m){ const d=(m&&m.desde_anio)||s.desde_anio||9999; return ANIOS.filter(a=> a>=d && !impAnio(s,a)); }
 // ¿el servicio tiene alguna decisión tomada?
 function esDecidido(s,m){ const ay=m.ay||{}; return aniosFacturables(s,m).some(a=> ay[String(a)] && ay[String(a)].f) || !!m.ofrecer; }
+// ¿es renovable? (filtro para la importación a Asktivia). Default inteligente; m.renovable lo sobreescribe.
+function renovableDefault(s,m){ return !m.propio && !m.dejar_caducar && m.estado!=="kd_fin" && (m.periodicidad||s.periodicidad||"anual")!=="puntual"; }
+function esRenovable(s,m){ return m.renovable!=null ? !!m.renovable : renovableDefault(s,m); }
+// próximo año/importe a facturar (el primer 'si' futuro; si no hay, el último 'si')
+function proximoFacturar(por_anio){
+  const sis = Object.entries(por_anio).filter(([a,y])=>y.facturar==="si").map(([a,y])=>[Number(a), y.importe]).sort((x,y)=>x[0]-y[0]);
+  if(!sis.length) return {anio:null, importe:null};
+  const futuro = sis.find(([a])=> a >= Number(HOY.slice(0,4)));
+  const prox = futuro || sis[sis.length-1];
+  return {anio:prox[0], importe:prox[1]};
+}
 // aniversario: mismo dia/mes que la ultima factura pero en el año dado
 function aniversario(ultimaISO, anio){
   if(ultimaISO && ultimaISO.length>=10){ return anio+"-"+ultimaISO.slice(5,10); }
@@ -498,19 +510,22 @@ function App(){
       const por_anio = {};
       aniosFacturables(s,m).forEach(a=>{ const y=ay[String(a)]; if(y && (y.f||y.imp!=null))
         por_anio[a] = {facturar:y.f||"", importe:(y.imp!=null&&y.imp!=="")?y.imp:(s.importe_sug||0)}; });
+      const prox = proximoFacturar(por_anio);
       return {
         codigo:s.codigo, cliente:s.cliente, tipo:m.tipo??s.tipo, categoria:s.categoria, origen:s.origen,
+        renovable:esRenovable(s,m),
         herramienta:m.herramienta||"", dominio:m.dominio||"",
         hosting:m.hosting||dom.prov||"", dominio_expira:dom.expira||"",
         lo_paga_cliente:!!m.lo_paga_cliente, propio:!!m.propio, ofrecer:!!m.ofrecer, activado:m.activado||"",
         estado_servicio:m.estado||"", dejar_caducar:!!m.dejar_caducar, desde_anio:m.desde_anio||s.desde_anio||null,
         periodicidad:m.periodicidad||"anual", uso_hasta:m.uso_hasta||s.uso_hasta_def||"", nota:m.nota||"",
+        proximo_anio:prox.anio, proximo_importe:prox.importe,
         anios_facturados:s.anios||{}, anios_a_facturar:por_anio
       };
     });
     const tareas_exp = tareasRender.map(t=>({titulo:t.titulo, fecha:t.fecha, cli:t.cli||"", srv:t.srv||"", hecho:!!t.hecho, manual:!!t.manual, nota:tnotas[t.key]||""}));
-    const clientes_exp = Object.entries(cmeta).filter(([k,v])=>v && (v.revisado||v.estado))
-      .map(([cod,v])=>({codigo:cod, revisado:!!v.revisado, estado:v.estado||""}));
+    const clientes_exp = Object.entries(cmeta).filter(([k,v])=>v && (v.revisado||v.estado||(v.ofertas&&v.ofertas.length)))
+      .map(([cod,v])=>({codigo:cod, revisado:!!v.revisado, estado:v.estado||"", ofertas:v.ofertas||[]}));
     const blob = new Blob([JSON.stringify({generado:HOY, decisiones:dec, tareas:tareas_exp, clientes:clientes_exp}, null, 2)], {type:"application/json"});
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob); a.download = "decisiones_renovaciones.json"; a.click();
@@ -935,6 +950,8 @@ function Servicio({s, m, tools, addTool, open, toggle, set, domUsage, addTarea, 
   const ay = m.ay || {};
   const setAY = (a, patch)=> set({ay:{...ay, [String(a)]:{...(ay[String(a)]||{}), ...patch}}});
   const badge = s.origen==="KD" ? "b-kd" : (s.origen==="Recurrente" ? "b-rec" : "b-man");
+  const renovable = esRenovable(s, m);
+  const usoEfectivo = m.uso_hasta || s.uso_hasta_def || "";
   // resumen de una línea para el modo colapsado
   function resumenDec(){
     const parts=[];
@@ -957,6 +974,8 @@ function Servicio({s, m, tools, addTool, open, toggle, set, domUsage, addTarea, 
         {m.propio && <span className="badge b-prop">propio / no facturable</span>}
         {m.dejar_caducar && <span className="badge b-dup">no renovar dominio</span>}
         {dupOtros.length>0 && <span className="badge b-dup" title={"Mismo dominio asignado también a: "+dupOtros.join(", ")}>⚠ dominio en otro cliente</span>}
+        {!renovable && <span className="badge b-nr" title="No entra en la importación de renovaciones a Asktivia">no renovable</span>}
+        {renovable && !usoEfectivo && <span className="badge b-dup" title="Sin fecha de renovación (uso hasta). Asktivia no podrá programar recordatorio. Ponle fecha en la ficha.">⚠ sin fecha renovación</span>}
         <select className={"srv-est"+(m.estado?" est-"+m.estado:"")} value={m.estado||""} onChange={e=>set({estado:e.target.value})} title="Estado de este servicio (independiente del estado del cliente)">
           {CLI_ESTADOS.map(([x,l])=><option key={x} value={x}>{l}</option>)}
         </select>
@@ -996,6 +1015,9 @@ function Servicio({s, m, tools, addTool, open, toggle, set, domUsage, addTarea, 
             <button key={v} title={h} aria-pressed={m.activado===v} onClick={()=>set({activado: m.activado===v?"":v})}>{l}</button>
           ))}
         </div>
+        <label className="chk" title="Si está activo, este servicio entra en la importación de renovaciones de Asktivia. Por defecto se marca solo, salvo propio / no renovar dominio / KD finalizado / puntual.">
+          <input type="checkbox" checked={renovable} onChange={e=>set({renovable:e.target.checked})} /> Renovable
+        </label>
         <label className="chk ofr" title="Independiente de la decisión: ofrecer mantenimiento, bonos de horas o facturar horas usadas. Puede convivir con regularizar años anteriores.">
           <input type="checkbox" checked={!!m.ofrecer} onChange={e=>set({ofrecer:e.target.checked})} /> Ofrecer mant./bonos
         </label>
