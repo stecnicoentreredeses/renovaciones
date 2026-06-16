@@ -545,7 +545,7 @@ function App(){
       const doms = normDominios(m);
       const dom = DOM_BY[(doms[0]?doms[0].dom:"")]||{};
       const dominios_exp = doms.map(d=>{ const di=DOM_BY[d.dom]||{};
-        return {dominio:d.dom, renovar:d.renovar, caduca:di.expira||"", proveedor:di.prov||""}; });
+        return {dominio:d.dom, renovar:d.renovar, caduca_registro:di.expira||"", proveedor:di.prov||""}; });
       const ay = m.ay||{};
       const por_anio = {};
       aniosFacturables(s,m).forEach(a=>{ const y=ay[String(a)]; if(y && (y.f||y.imp!=null))
@@ -1154,13 +1154,13 @@ function Servicio({s, m, tools, addTool, open, toggle, set, domUsage, addTarea, 
           )}
           {tieneDominio(s) && (
             <div style={{gridColumn:"1/-1"}}>
-              <label>Dominios <Help t="Dominios de este cliente. Marca cada uno: renovar o dejar caducar. La fecha es la caducidad real (Dinahosting). Un cliente puede tener varios con decisiones distintas."/></label>
+              <label>Dominios <Help t="Dominios de este cliente. Marca cada uno: renovar o dejar caducar. La fecha mostrada es la caducidad del REGISTRO del dominio (Dinahosting); el hosting (SiteGround, etc.) puede caducar en otra fecha distinta. Un cliente puede tener varios dominios con decisiones distintas."/></label>
               <div className="dom-list">
                 {doms.map(d=>{ const info=DOM_BY[d.dom]||{};
                   return (
                   <div className={"dom-row"+(d.renovar?"":" caducar")} key={d.dom}>
                     <span className="dom-name">{d.dom}</span>
-                    {info.expira && <span className="dom-cad">caduca {info.expira}</span>}
+                    {info.expira && <span className="dom-cad" title="Caducidad del REGISTRO del dominio (Dinahosting). El hosting (SiteGround, etc.) caduca en otra fecha distinta.">registro: {info.expira}</span>}
                     {info.prov && <span className="dom-prov">{info.prov}</span>}
                     <span className="seg dom-dec" role="group" aria-label="Decisión del dominio">
                       <button title="Renovar este dominio" aria-pressed={d.renovar} onClick={()=>setDom(d.dom,true)}>Renovar</button>
