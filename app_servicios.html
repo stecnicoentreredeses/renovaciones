@@ -539,6 +539,42 @@ function App(){
     a.href = URL.createObjectURL(blob); a.download = "decisiones_renovaciones.json"; a.click();
   }
 
+  // Listado por cliente/servicio para Excel: 1 fila por servicio + fila "general" por cliente (tareas comerciales/manuales)
+  function exportarCSV(){
+    const SEP = ";";
+    const esc = v => '"' + String(v==null?"":v).replace(/"/g,'""') + '"';
+    const estLbl = e => (CLI_ESTADOS.find(([x])=>x===e)||[])[1] || e || "";
+    const fmtT = t => t.titulo + " [" + (t.hecho?"hecha":"pendiente") + "]" + (t.fecha?" ("+t.fecha+")":"") + (tnotas[t.key]?" — "+tnotas[t.key]:"");
+    const cols = ["codigo","cliente","estado_cliente","ofertas","tipo_servicio","origen","categoria","estado_servicio","renovable","activado","periodicidad","dominio","hosting","uso_hasta","dominio_expira","proximo_anio","proximo_importe","propio","dejar_caducar","nota_servicio","tareas"];
+    const porCli = {};
+    todos.forEach(s=>{ (porCli[s.codigo] = porCli[s.codigo] || {cliente:s.cliente, servicios:[]}).servicios.push(s); });
+    const cods = Object.keys(porCli).sort((a,b)=>porCli[a].cliente.localeCompare(porCli[b].cliente));
+    const rows = [];
+    cods.forEach(cod=>{
+      const v = cmeta[cod]||{};
+      const ofTxt = normOfertas(v.ofertas).map(o=>o.motivo?o.srv+" ("+o.motivo+")":o.srv).join(" | ");
+      const estCli = estLbl(v.estado||"");
+      const nom = porCli[cod].cliente;
+      porCli[cod].servicios.forEach(s=>{
+        const m = marks[s.id]||{};
+        const dom = DOM_BY[m.dominio||""]||{};
+        const por_anio = {};
+        aniosFacturables(s,m).forEach(a=>{ const y=(m.ay||{})[String(a)]; if(y&&(y.f||y.imp!=null)) por_anio[a]={facturar:y.f||"",importe:(y.imp!=null&&y.imp!=="")?y.imp:(s.importe_sug||0)}; });
+        const prox = proximoFacturar(por_anio);
+        const tS = tareasRender.filter(t=>!t.manual && t.key && t.key.indexOf(s.id+"::")===0).map(fmtT).join(" | ");
+        rows.push([cod, nom, estCli, ofTxt, m.tipo??s.tipo, s.origen, s.categoria, estLbl(m.estado||""), esRenovable(s,m)?"sí":"no", m.activado||"", m.periodicidad||"anual", m.dominio||"", m.hosting||dom.prov||"", m.uso_hasta||s.uso_hasta_def||"", dom.expira||"", prox?prox.anio:"", prox?prox.importe:"", m.propio?"sí":"no", m.dejar_caducar?"sí":"no", m.nota||"", tS]);
+      });
+      const grales = tareasRender.filter(t=> (t.codigo===cod && t.key && t.key.indexOf("COM__")===0) || (t.manual && t.cli===nom)).map(fmtT).join(" | ");
+      if(grales) rows.push([cod, nom, estCli, ofTxt, "(tareas generales)","","","","","","","","","","","","","","","", grales]);
+    });
+    const sinCli = tareasRender.filter(t=>t.manual && !t.cli).map(fmtT).join(" | ");
+    if(sinCli) rows.push(["","(sin cliente)","","","(tareas generales)","","","","","","","","","","","","","","","", sinCli]);
+    const csv = [cols.map(esc).join(SEP)].concat(rows.map(r=>r.map(esc).join(SEP))).join("\r\n");
+    const blob = new Blob(["﻿", csv], {type:"text/csv;charset=utf-8"});  // BOM para que Excel lea bien los acentos
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "listado_renovaciones.csv"; a.click();
+  }
+
   function copiaSeguridad(){
     const datos = {};
     K_ALL.forEach(k=>{ const v = localStorage.getItem(k); if(v!=null) datos[k] = v; });
@@ -648,6 +684,7 @@ function App(){
         <button className="btn" onClick={copiaSeguridad} title="Descarga un fichero con TODO tu trabajo (copia de seguridad real, restaurable)">Copia de seguridad</button>
         <button className="btn" onClick={()=>document.getElementById("restoreFile").click()} title="Carga una copia de seguridad y restaura tu trabajo">Restaurar</button>
         <input id="restoreFile" type="file" accept="application/json,.json" style={{display:"none"}} onChange={restaurar} />
+        <button className="btn" onClick={exportarCSV} title="Descarga un listado por cliente/servicio con tareas y notas para abrir en Excel">Listado (CSV)</button>
         <button className="btn primary" onClick={exportar}>Descargar decisiones (JSON)</button>
       </div>
       </div>
