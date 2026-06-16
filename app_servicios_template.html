@@ -202,6 +202,18 @@
   .oferta-row .chip{flex:0 0 auto}
   .oferta-why{flex:1;min-width:220px;padding:5px 9px;border:1px solid #cdbff0;border-radius:7px;font:inherit;font-size:13px}
   .oferta-add{align-self:flex-start}
+  .dom-list{display:flex;flex-direction:column;gap:6px;margin-bottom:7px}
+  .dom-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+  .dom-row.caducar{background:#fdf2f2;border-color:#f5c2c7}
+  .dom-name{font-weight:600;font-size:14px}
+  .dom-cad{font-size:12.5px;color:#b45309;background:#fff4e5;border:1px solid #ffd9a8;border-radius:6px;padding:1px 7px}
+  .dom-prov{font-size:12.5px;color:#4b5563;background:#f3f5f9;border:1px solid var(--line);border-radius:6px;padding:1px 7px}
+  .seg.dom-dec{margin-left:auto}
+  .seg.dom-dec button{padding:5px 11px;font-size:13px}
+  .seg.dom-dec button:first-child[aria-pressed=true]{background:var(--ok);color:#fff}
+  .seg.dom-dec button:last-child[aria-pressed=true]{background:var(--bad);color:#fff}
+  .dom-del{border:0;background:none;color:#aaa;cursor:pointer;font-size:14px;padding:2px 4px}
+  .dom-del:hover{color:var(--bad)}
   .chip{display:inline-flex;align-items:center;gap:5px;font-size:13px;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd;border-radius:14px;padding:2px 5px 2px 10px}
   .chip button{border:0;background:#c4b5fd;color:#fff;border-radius:50%;width:16px;height:16px;line-height:1;cursor:pointer;font-size:12px;padding:0}
   .chip button:hover{background:#7c3aed}
@@ -238,6 +250,13 @@ const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto"
 function mesLabel(ym){ if(!ym||ym.length<7) return "Sin fecha"; const p=ym.split("-"); return MESES[(+p[1])-1]+" "+p[0]; }
 // servicios que pueden llevar dominio/hosting: los "web" y los recurrentes de tipo hosting/dominio
 function tieneDominio(s){ var t=(s.tipo||"").toLowerCase(); return (s.categoria||"")==="web" || t.indexOf("hosting")>=0 || t.indexOf("dominio")>=0; }
+// dominios de un servicio como lista [{dom, renovar}]. Compat: dato antiguo m.dominio (string) + m.dejar_caducar.
+function normDominios(m){
+  if(Array.isArray(m.dominios)) return m.dominios.filter(d=>d&&d.dom).map(d=>({dom:d.dom, renovar:d.renovar!==false}));
+  if(m.dominio) return [{dom:m.dominio, renovar:!m.dejar_caducar}];
+  return [];
+}
+function hayDominios(m){ return Array.isArray(m.dominios) && m.dominios.length>0; }
 
 const DECISIONES = [
   ["renovar_todos","Renovar todos los años","El servicio se factura cada año de forma indefinida."],
@@ -278,7 +297,7 @@ function aniosFacturables(s,m){ const d=(m&&m.desde_anio)||s.desde_anio||9999; r
 // ¿el servicio tiene alguna decisión tomada?
 function esDecidido(s,m){ const ay=m.ay||{}; return aniosFacturables(s,m).some(a=> ay[String(a)] && ay[String(a)].f) || !!m.ofrecer; }
 // ¿es renovable? (filtro para la importación a Asktivia). Default inteligente; m.renovable lo sobreescribe.
-function renovableDefault(s,m){ return !m.propio && !m.dejar_caducar && m.estado!=="kd_fin" && (m.periodicidad||s.periodicidad||"anual")!=="puntual"; }
+function renovableDefault(s,m){ var ds=normDominios(m); var todosCaducan=ds.length>0 && ds.every(function(d){return !d.renovar;}); return !m.propio && !m.dejar_caducar && !todosCaducan && m.estado!=="kd_fin" && (m.periodicidad||s.periodicidad||"anual")!=="puntual"; }
 function esRenovable(s,m){ return m.renovable!=null ? !!m.renovable : renovableDefault(s,m); }
 // próximo año/importe a facturar (el primer 'si' futuro; si no hay, el último 'si')
 function proximoFacturar(por_anio){
@@ -376,8 +395,8 @@ function App(){
   // dominio -> { codigo: cliente } — para avisar de dominios usados en >1 cliente
   const domUsage = useMemo(()=>{
     const map = {};
-    todos.forEach(s=>{ const dn=((marks[s.id]||{}).dominio||"").trim(); if(!dn) return;
-      (map[dn] = map[dn] || {})[s.codigo] = s.cliente; });
+    todos.forEach(s=>{ normDominios(marks[s.id]||{}).forEach(d=>{ const dn=(d.dom||"").trim(); if(!dn) return;
+      (map[dn] = map[dn] || {})[s.codigo] = s.cliente; }); });
     return map;
   }, [todos, marks]);
   // codigos de clientes con al menos una nota en algún servicio
@@ -420,8 +439,8 @@ function App(){
     todos.forEach(s=>{
       const m = marks[s.id]||{};
       const ay = m.ay||{};
-      const d = DOM_BY[m.dominio||""];
-      const dlabel = m.dominio ? (m.dominio + (d?" ("+d.prov+")":"")) : s.tipo;
+      const doms = normDominios(m);
+      const primDom = doms[0] ? doms[0].dom : "";
       const fact = aniosFacturables(s,m);
       let haySi=false, hayNo=false;
       fact.forEach(a=>{
@@ -430,21 +449,29 @@ function App(){
           const imp = (y.imp!=null && y.imp!=="") ? y.imp : s.importe_sug;
           out.push({key:s.id+"::fact"+a, codigo:s.codigo, cat:"facturar", importe:(Math.round(imp)||0),
                     tipo:"Facturar "+a+" · "+(Math.round(imp)||0)+" €",
-                    cli:s.cliente, srv:s.tipo+(tieneDominio(s)&&m.dominio?" ("+m.dominio+")":""),
+                    cli:s.cliente, srv:s.tipo+(primDom?" ("+primDom+")":""),
                     fecha:aniversario(m.uso_hasta||s.ultima_fecha, a)});
         }
         if(y.f==="no") hayNo=true;
       });
-      // web con dominio que se deja caducar: checkbox explícito O todos los años a No (sin ninguno a Sí)
-      if(tieneDominio(s) && m.dominio && (m.dejar_caducar || (hayNo && !haySi)))
-        out.push({key:s.id+"::norenovdom", codigo:s.codigo, cat:"dominio", importe:0, tipo:"No renovar dominio — dejar caducar", cli:s.cliente, srv:dlabel, fecha:(d?d.expira_iso:m.uso_hasta||"")});
+      // dominios a dejar caducar: por dominio (modelo nuevo) o heurística legacy (un solo dominio)
+      if(hayDominios(m)){
+        doms.forEach(dd=>{ if(!dd.renovar){ const di=DOM_BY[dd.dom]||{};
+          out.push({key:s.id+"::norenovdom::"+dd.dom, codigo:s.codigo, cat:"dominio", importe:0,
+            tipo:"No renovar dominio — dejar caducar", cli:s.cliente,
+            srv:dd.dom+(di.prov?" ("+di.prov+")":""), fecha:(di.expira_iso||m.uso_hasta||"")}); } });
+      } else if(tieneDominio(s) && m.dominio && (m.dejar_caducar || (hayNo && !haySi))){
+        const di=DOM_BY[m.dominio]||{};
+        out.push({key:s.id+"::norenovdom", codigo:s.codigo, cat:"dominio", importe:0, tipo:"No renovar dominio — dejar caducar", cli:s.cliente, srv:(m.dominio+(di.prov?" ("+di.prov+")":"")), fecha:(di.expira_iso||m.uso_hasta||"")});
+      }
       if(m.ofrecer) out.push({key:s.id+"::ofrecer", codigo:s.codigo, cat:"ofrecer", importe:0, tipo:"Ofrecer mantenimiento / bonos", cli:s.cliente, srv:s.tipo, fecha:m.uso_hasta||""});
     });
     // TAREAS COMERCIALES por cliente: ofertas del catálogo marcadas. Fecha = caducidad más próxima del cliente.
     const nombreCod = {}, proxCad = {};
     todos.forEach(s=>{ const m=marks[s.id]||{};
       if(!nombreCod[s.codigo]) nombreCod[s.codigo]=s.cliente;
-      const dd = DOM_BY[m.dominio||""];
+      const pd = normDominios(m)[0];
+      const dd = pd ? DOM_BY[pd.dom] : null;
       const exp = m.uso_hasta || (dd?dd.expira_iso:"") || s.uso_hasta_def || "";
       if(exp && (!proxCad[s.codigo] || exp < proxCad[s.codigo])) proxCad[s.codigo]=exp;
     });
@@ -515,7 +542,10 @@ function App(){
   function exportar(){
     const dec = todos.filter(s=>marks[s.id] || s.origen==="Manual").map(s=>{
       const m = marks[s.id]||{};
-      const dom = DOM_BY[m.dominio||""]||{};
+      const doms = normDominios(m);
+      const dom = DOM_BY[(doms[0]?doms[0].dom:"")]||{};
+      const dominios_exp = doms.map(d=>{ const di=DOM_BY[d.dom]||{};
+        return {dominio:d.dom, renovar:d.renovar, caduca:di.expira||"", proveedor:di.prov||""}; });
       const ay = m.ay||{};
       const por_anio = {};
       aniosFacturables(s,m).forEach(a=>{ const y=ay[String(a)]; if(y && (y.f||y.imp!=null))
@@ -524,10 +554,10 @@ function App(){
       return {
         codigo:s.codigo, cliente:s.cliente, tipo:m.tipo??s.tipo, categoria:s.categoria, origen:s.origen,
         renovable:esRenovable(s,m),
-        herramienta:m.herramienta||"", dominio:m.dominio||"",
+        herramienta:m.herramienta||"", dominio:(doms[0]?doms[0].dom:""), dominios:dominios_exp,
         hosting:m.hosting||dom.prov||"", dominio_expira:dom.expira||"",
         lo_paga_cliente:!!m.lo_paga_cliente, propio:!!m.propio, ofrecer:!!m.ofrecer, activado:m.activado||"",
-        estado_servicio:m.estado||"", dejar_caducar:!!m.dejar_caducar, desde_anio:m.desde_anio||s.desde_anio||null,
+        estado_servicio:m.estado||"", dejar_caducar:doms.some(d=>!d.renovar), desde_anio:m.desde_anio||s.desde_anio||null,
         periodicidad:m.periodicidad||"anual", uso_hasta:m.uso_hasta||s.uso_hasta_def||"", nota:m.nota||"",
         proximo_anio:prox.anio, proximo_importe:prox.importe,
         anios_facturados:s.anios||{}, anios_a_facturar:por_anio
@@ -559,12 +589,14 @@ function App(){
       const nom = porCli[cod].cliente;
       porCli[cod].servicios.forEach(s=>{
         const m = marks[s.id]||{};
-        const dom = DOM_BY[m.dominio||""]||{};
+        const mdoms = normDominios(m);
+        const dom = DOM_BY[(mdoms[0]?mdoms[0].dom:"")]||{};
+        const domTxt = mdoms.map(d=>d.dom+(d.renovar?"":" (caducar)")).join(" | ");
         const por_anio = {};
         aniosFacturables(s,m).forEach(a=>{ const y=(m.ay||{})[String(a)]; if(y&&(y.f||y.imp!=null)) por_anio[a]={facturar:y.f||"",importe:(y.imp!=null&&y.imp!=="")?y.imp:(s.importe_sug||0)}; });
         const prox = proximoFacturar(por_anio);
         const tS = tareasRender.filter(t=>!t.manual && t.key && t.key.indexOf(s.id+"::")===0).map(fmtT).join(" | ");
-        rows.push([cod, nom, estCli, ofTxt, m.tipo??s.tipo, s.origen, s.categoria, estLbl(m.estado||""), esRenovable(s,m)?"sí":"no", m.activado||"", m.periodicidad||"anual", m.dominio||"", m.hosting||dom.prov||"", m.uso_hasta||s.uso_hasta_def||"", dom.expira||"", prox?prox.anio:"", prox?prox.importe:"", m.propio?"sí":"no", m.dejar_caducar?"sí":"no", m.nota||"", tS]);
+        rows.push([cod, nom, estCli, ofTxt, m.tipo??s.tipo, s.origen, s.categoria, estLbl(m.estado||""), esRenovable(s,m)?"sí":"no", m.activado||"", m.periodicidad||"anual", domTxt, m.hosting||dom.prov||"", m.uso_hasta||s.uso_hasta_def||"", dom.expira||"", prox?prox.anio:"", prox?prox.importe:"", m.propio?"sí":"no", mdoms.some(d=>!d.renovar)?"sí":"no", m.nota||"", tS]);
       });
       const grales = tareasRender.filter(t=> (t.codigo===cod && t.key && t.key.indexOf("COM__")===0) || (t.manual && t.cli===nom)).map(fmtT).join(" | ");
       if(grales) rows.push([cod, nom, estCli, ofTxt, "(tareas generales)","","","","","","","","","","","","","","","", grales]);
@@ -1004,20 +1036,28 @@ function Servicio({s, m, tools, addTool, open, toggle, set, domUsage, addTarea, 
   const decidido = esDecidido(s, m);
   const compact = decidido && !expanded;   // auto-colapso de servicios ya decididos
   const desde = m.desde_anio || s.desde_anio || 9999;
-  const dom = (m.dominio||"").trim();
-  const dupOtros = (dom && domUsage && domUsage[dom])
-    ? Object.entries(domUsage[dom]).filter(([cod])=>cod!==s.codigo).map(([cod,nom])=>nom) : [];
+  const doms = normDominios(m);
+  const noRenov = doms.filter(d=>!d.renovar);   // dominios a dejar caducar
+  // otros clientes que comparten alguno de estos dominios
+  const dupSet = {};
+  doms.forEach(d=>{ const u=domUsage&&domUsage[d.dom]; if(u) Object.entries(u).forEach(([cod,nom])=>{ if(cod!==s.codigo) dupSet[nom]=true; }); });
+  const dupOtros = Object.keys(dupSet);
   const ay = m.ay || {};
   const setAY = (a, patch)=> set({ay:{...ay, [String(a)]:{...(ay[String(a)]||{}), ...patch}}});
   const badge = s.origen==="KD" ? "b-kd" : (s.origen==="Recurrente" ? "b-rec" : "b-man");
   const renovable = esRenovable(s, m);
   const usoEfectivo = m.uso_hasta || s.uso_hasta_def || "";
+  // gestión de la lista de dominios del servicio
+  const addDom = (dn)=>{ if(!dn || doms.some(d=>d.dom===dn)) return; const info=DOM_BY[dn]||{};
+    set({dominios:[...doms, {dom:dn, renovar:true}], hosting:(m.hosting||info.prov||"")}); };
+  const setDom = (dn, renovar)=> set({dominios: doms.map(d=>d.dom===dn?{...d, renovar:renovar}:d)});
+  const delDom = (dn)=> set({dominios: doms.filter(d=>d.dom!==dn)});
   // resumen de una línea para el modo colapsado
   function resumenDec(){
     const parts=[];
     const sis = ANIOS.filter(a=> (ay[String(a)]||{}).f==="si");
     if(sis.length) parts.push("Facturar "+sis.join(", "));
-    if(m.dejar_caducar) parts.push("No renovar dominio");
+    if(noRenov.length) parts.push("No renovar: "+noRenov.map(d=>d.dom).join(", "));
     if(m.ofrecer) parts.push("Ofrecer mant./bonos");
     if(m.propio) parts.push("Propio");
     return parts.length ? parts.join(" · ") : "decidido";
@@ -1032,7 +1072,7 @@ function Servicio({s, m, tools, addTool, open, toggle, set, domUsage, addTarea, 
         {m.lo_paga_cliente && <span className="badge b-cli">paga el cliente</span>}
         {m.ofrecer && <span className="badge b-man">ofrecer mant./bonos</span>}
         {m.propio && <span className="badge b-prop">propio / no facturable</span>}
-        {m.dejar_caducar && <span className="badge b-dup">no renovar dominio</span>}
+        {noRenov.length>0 && <span className="badge b-dup" title={"Dejar caducar: "+noRenov.map(d=>d.dom).join(", ")}>no renovar dominio</span>}
         {dupOtros.length>0 && <span className="badge b-dup" title={"Mismo dominio asignado también a: "+dupOtros.join(", ")}>⚠ dominio en otro cliente</span>}
         {!renovable && <span className="badge b-nr" title="No entra en la importación de renovaciones a Asktivia">no renovable</span>}
         {renovable && !usoEfectivo && <span className="badge b-dup" title="Sin fecha de renovación (uso hasta). Asktivia no podrá programar recordatorio. Ponle fecha en la ficha.">⚠ sin fecha renovación</span>}
@@ -1081,9 +1121,6 @@ function Servicio({s, m, tools, addTool, open, toggle, set, domUsage, addTarea, 
         <label className="chk ofr" title="Independiente de la decisión: ofrecer mantenimiento, bonos de horas o facturar horas usadas. Puede convivir con regularizar años anteriores.">
           <input type="checkbox" checked={!!m.ofrecer} onChange={e=>set({ofrecer:e.target.checked})} /> Ofrecer mant./bonos
         </label>
-        {tieneDominio(s) && <label className="chk" title="Genera la tarea 'No renovar dominio — dejar caducar' en la agenda.">
-          <input type="checkbox" checked={!!m.dejar_caducar} onChange={e=>set({dejar_caducar:e.target.checked})} /> No renovar dominio
-        </label>}
         <button className="link" onClick={addTarea} title="Crear una tarea ligada a este servicio">+ tarea</button>
         <button className="link" onClick={toggle}>{open?"▲ ocultar ficha":"▼ ficha"}</button>
       </div>
@@ -1116,23 +1153,40 @@ function Servicio({s, m, tools, addTool, open, toggle, set, domUsage, addTarea, 
             </div>
           )}
           {tieneDominio(s) && (
-            <div>
-              <label>Dominio <Help t="Dominio de Dinahosting de este cliente. Al elegirlo se rellena el proveedor y la fecha de caducidad."/> {m.dominio && DOM_BY[m.dominio] && <span className="muted">· caduca {DOM_BY[m.dominio].expira}</span>}</label>
-              <select value={m.dominio||""} onChange={e=>{const d=DOM_BY[e.target.value]; set({dominio:e.target.value, hosting:(m.hosting|| (d?d.prov:"")), uso_hasta:(d&&d.expira_iso ? d.expira_iso : (m.uso_hasta||"")) });}}>
-                <option value="">— elegir dominio —</option>
+            <div style={{gridColumn:"1/-1"}}>
+              <label>Dominios <Help t="Dominios de este cliente. Marca cada uno: renovar o dejar caducar. La fecha es la caducidad real (Dinahosting). Un cliente puede tener varios con decisiones distintas."/></label>
+              <div className="dom-list">
+                {doms.map(d=>{ const info=DOM_BY[d.dom]||{};
+                  return (
+                  <div className={"dom-row"+(d.renovar?"":" caducar")} key={d.dom}>
+                    <span className="dom-name">{d.dom}</span>
+                    {info.expira && <span className="dom-cad">caduca {info.expira}</span>}
+                    {info.prov && <span className="dom-prov">{info.prov}</span>}
+                    <span className="seg dom-dec" role="group" aria-label="Decisión del dominio">
+                      <button title="Renovar este dominio" aria-pressed={d.renovar} onClick={()=>setDom(d.dom,true)}>Renovar</button>
+                      <button title="Dejar caducar (no renovar)" aria-pressed={!d.renovar} onClick={()=>setDom(d.dom,false)}>Dejar caducar</button>
+                    </span>
+                    <button className="dom-del" title="Quitar dominio" onClick={()=>delDom(d.dom)}>✕</button>
+                  </div>
+                  );
+                })}
+                {doms.length===0 && <span className="muted" style={{fontSize:13}}>Sin dominios asignados. Añade uno abajo.</span>}
+              </div>
+              <select value="" onChange={e=>{ if(e.target.value) addDom(e.target.value); }}>
+                <option value="">+ añadir dominio…</option>
                 {s.dom_sug && s.dom_sug.length>0 && <optgroup label="Sugeridos para este cliente">
-                  {s.dom_sug.map(d=><option key={d} value={d}>{d}</option>)}
+                  {s.dom_sug.filter(d=>!doms.some(x=>x.dom===d)).map(d=><option key={d} value={d}>{d}</option>)}
                 </optgroup>}
                 <optgroup label="Todos los dominios">
-                  {DOMINIOS.map(d=><option key={d.dom} value={d.dom}>{d.dom} ({d.prov})</option>)}
+                  {DOMINIOS.filter(d=>!doms.some(x=>x.dom===d.dom)).map(d=><option key={d.dom} value={d.dom}>{d.dom} ({d.prov})</option>)}
                 </optgroup>
               </select>
             </div>
           )}
           {tieneDominio(s) && (
             <div>
-              <label>Hosting / proveedor <Help t="Dónde está alojado: Dinahosting, LucusHost, SiteGround… Se rellena solo al elegir el dominio."/></label>
-              <input value={m.hosting|| (DOM_BY[m.dominio||""]?DOM_BY[m.dominio].prov:"") } onChange={e=>set({hosting:e.target.value})} placeholder="Dinahosting…" />
+              <label>Hosting / proveedor <Help t="Dónde está alojado: Dinahosting, LucusHost, SiteGround… Se rellena solo al añadir el primer dominio."/></label>
+              <input value={m.hosting|| (doms[0]&&DOM_BY[doms[0].dom]?DOM_BY[doms[0].dom].prov:"") } onChange={e=>set({hosting:e.target.value})} placeholder="Dinahosting…" />
             </div>
           )}
           <div>
