@@ -151,7 +151,8 @@ def construir_servicios(dominios):
                         s["importe_sug"] = imp
                 # linea original completa para identificar el servicio (normaliza saltos)
                 desc_full = re.sub(r"\s+", " ", desc).strip()
-                s["lineas"].append({"anio": anio, "desc": desc_full[:400], "importe": round(imp, 2)})
+                s["lineas"].append({"anio": anio, "fecha": fdate.isoformat() if fdate else "",
+                                    "desc": desc_full[:400], "importe": round(imp, 2)})
 
         dom_sug = sugerir_dominios(c.get("nombre", ""), dominios)
         for key, s in sorted(servicios.items()):

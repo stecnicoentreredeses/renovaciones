@@ -1085,8 +1085,8 @@ function Servicio({s, m, tools, addTool, open, toggle, set, domUsage, addTarea, 
       {s.lineas && s.lineas.length>0 && (
         <div className="lineas">
           {s.lineas.map((ln,i)=>(
-            <span key={i} className="ln" title={ln.desc}>
-              {ln.anio?ln.anio+": ":""}{ln.desc}{ln.importe?" ("+Math.round(ln.importe)+"€)":""}
+            <span key={i} className="ln" title={(ln.fecha?fmt(ln.fecha)+" · ":"")+ln.desc}>
+              {ln.fecha?fmt(ln.fecha)+": ":(ln.anio?ln.anio+": ":"")}{ln.desc}{ln.importe?" ("+Math.round(ln.importe)+"€)":""}
             </span>
           ))}
         </div>
@@ -1208,7 +1208,7 @@ function Servicio({s, m, tools, addTool, open, toggle, set, domUsage, addTarea, 
               <label>Líneas de factura (descripción completa)</label>
               <div className="lineas-full">
                 {s.lineas.map((ln,i)=>(
-                  <div key={i} className="lnf">{ln.anio?<b>{ln.anio}</b>:null} {ln.desc}{ln.importe?" · "+Math.round(ln.importe)+"€":""}</div>
+                  <div key={i} className="lnf">{ln.fecha?<b>{fmt(ln.fecha)}</b>:(ln.anio?<b>{ln.anio}</b>:null)} {ln.desc}{ln.importe?" · "+Math.round(ln.importe)+"€":""}</div>
                 ))}
               </div>
             </div>
