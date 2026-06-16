@@ -6,7 +6,7 @@
 <title>Renovaciones — decisión de servicios</title>
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@^7.0.0/babel.min.js"></script>
 <style>
   :root{--ok:#107c41;--okbg:#dff3e4;--warn:#9a6700;--warnbg:#fff4ce;--bad:#c42b1c;
         --line:#e1e4e8;--ink:#1b1b1b;--mut:#5a5a5a;--blue:#005fb8;--blue2:#0067c0;
@@ -236,6 +236,8 @@ const CATALOGO_DEF = ["Mantenimiento web","Bonos de horas","Posicionamiento SEO"
 // nombre del mes en español desde 'YYYY-MM'
 const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 function mesLabel(ym){ if(!ym||ym.length<7) return "Sin fecha"; const p=ym.split("-"); return MESES[(+p[1])-1]+" "+p[0]; }
+// servicios que pueden llevar dominio/hosting: los "web" y los recurrentes de tipo hosting/dominio
+function tieneDominio(s){ var t=(s.tipo||"").toLowerCase(); return (s.categoria||"")==="web" || t.indexOf("hosting")>=0 || t.indexOf("dominio")>=0; }
 
 const DECISIONES = [
   ["renovar_todos","Renovar todos los años","El servicio se factura cada año de forma indefinida."],
@@ -428,13 +430,13 @@ function App(){
           const imp = (y.imp!=null && y.imp!=="") ? y.imp : s.importe_sug;
           out.push({key:s.id+"::fact"+a, codigo:s.codigo, cat:"facturar", importe:(Math.round(imp)||0),
                     tipo:"Facturar "+a+" · "+(Math.round(imp)||0)+" €",
-                    cli:s.cliente, srv:s.tipo+(s.categoria==="web"&&m.dominio?" ("+m.dominio+")":""),
+                    cli:s.cliente, srv:s.tipo+(tieneDominio(s)&&m.dominio?" ("+m.dominio+")":""),
                     fecha:aniversario(m.uso_hasta||s.ultima_fecha, a)});
         }
         if(y.f==="no") hayNo=true;
       });
       // web con dominio que se deja caducar: checkbox explícito O todos los años a No (sin ninguno a Sí)
-      if(s.categoria==="web" && m.dominio && (m.dejar_caducar || (hayNo && !haySi)))
+      if(tieneDominio(s) && m.dominio && (m.dejar_caducar || (hayNo && !haySi)))
         out.push({key:s.id+"::norenovdom", codigo:s.codigo, cat:"dominio", importe:0, tipo:"No renovar dominio — dejar caducar", cli:s.cliente, srv:dlabel, fecha:(d?d.expira_iso:m.uso_hasta||"")});
       if(m.ofrecer) out.push({key:s.id+"::ofrecer", codigo:s.codigo, cat:"ofrecer", importe:0, tipo:"Ofrecer mantenimiento / bonos", cli:s.cliente, srv:s.tipo, fecha:m.uso_hasta||""});
     });
@@ -1079,7 +1081,7 @@ function Servicio({s, m, tools, addTool, open, toggle, set, domUsage, addTarea, 
         <label className="chk ofr" title="Independiente de la decisión: ofrecer mantenimiento, bonos de horas o facturar horas usadas. Puede convivir con regularizar años anteriores.">
           <input type="checkbox" checked={!!m.ofrecer} onChange={e=>set({ofrecer:e.target.checked})} /> Ofrecer mant./bonos
         </label>
-        {s.categoria==="web" && <label className="chk" title="Genera la tarea 'No renovar dominio — dejar caducar' en la agenda.">
+        {tieneDominio(s) && <label className="chk" title="Genera la tarea 'No renovar dominio — dejar caducar' en la agenda.">
           <input type="checkbox" checked={!!m.dejar_caducar} onChange={e=>set({dejar_caducar:e.target.checked})} /> No renovar dominio
         </label>}
         <button className="link" onClick={addTarea} title="Crear una tarea ligada a este servicio">+ tarea</button>
@@ -1113,7 +1115,7 @@ function Servicio({s, m, tools, addTool, open, toggle, set, domUsage, addTarea, 
               </select>
             </div>
           )}
-          {s.categoria==="web" && (
+          {tieneDominio(s) && (
             <div>
               <label>Dominio <Help t="Dominio de Dinahosting de este cliente. Al elegirlo se rellena el proveedor y la fecha de caducidad."/> {m.dominio && DOM_BY[m.dominio] && <span className="muted">· caduca {DOM_BY[m.dominio].expira}</span>}</label>
               <select value={m.dominio||""} onChange={e=>{const d=DOM_BY[e.target.value]; set({dominio:e.target.value, hosting:(m.hosting|| (d?d.prov:"")), uso_hasta:(d&&d.expira_iso ? d.expira_iso : (m.uso_hasta||"")) });}}>
@@ -1127,7 +1129,7 @@ function Servicio({s, m, tools, addTool, open, toggle, set, domUsage, addTarea, 
               </select>
             </div>
           )}
-          {s.categoria==="web" && (
+          {tieneDominio(s) && (
             <div>
               <label>Hosting / proveedor <Help t="Dónde está alojado: Dinahosting, LucusHost, SiteGround… Se rellena solo al elegir el dominio."/></label>
               <input value={m.hosting|| (DOM_BY[m.dominio||""]?DOM_BY[m.dominio].prov:"") } onChange={e=>set({hosting:e.target.value})} placeholder="Dinahosting…" />
