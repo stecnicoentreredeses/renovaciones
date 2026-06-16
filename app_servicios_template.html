@@ -760,7 +760,7 @@ function App(){
                         open={!!open[s.id]} toggle={()=>setOpen(o=>({...o,[s.id]:!o[s.id]}))}
                         domUsage={domUsage} addTarea={()=>addTareaCtx(s.cliente, s.tipo)}
                         expanded={!!srvExp[s.id]} toggleExpand={()=>setSrvExp(o=>({...o,[s.id]:!o[s.id]}))}
-                        set={patch=>setMark(s.id, patch)} />
+                        set={patch=>{ setMark(s.id, patch); setSrvExp(o=>({...o,[s.id]:true})); }} />
             ))}
           </section>
           );
