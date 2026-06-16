@@ -54,6 +54,7 @@
   .est-facturado{color:#1e40af;border-color:#1e40af;background:#dbeafe}
   .est-terminado{color:var(--ok);border-color:var(--ok);background:var(--okbg)}
   .est-kd_fin{color:#5b21b6;border-color:#7c3aed;background:#ede9fe}
+  .est-revisar{color:#0e7490;border-color:#06b6d4;background:#cffafe}
   .chk.ofr{padding-top:0;font-size:13.5px;background:#f3eefb;border:1px solid #e2d6f5;border-radius:7px;padding:5px 9px}
   .srv{padding:13px 16px;border-bottom:1px solid #eef0f2}
   .srv:last-child{border-bottom:0}
@@ -165,7 +166,7 @@
   .kb-col > h3{margin:2px 4px 10px;font-size:13px;display:flex;align-items:center;gap:8px;color:#374151}
   .kb-dot{width:9px;height:9px;border-radius:50%}
   .kb-count{margin-left:auto;background:#fff;border:1px solid var(--line);border-radius:20px;font-size:11px;padding:1px 9px;color:var(--mut)}
-  .d-sin{background:#9aa4b2}.d-hab{background:#e0a800}.d-pf{background:#1f6feb}.d-fac{background:#16a34a}.d-ter{background:#6b7280}.d-kdfin{background:#7c3aed}
+  .d-sin{background:#9aa4b2}.d-hab{background:#e0a800}.d-pf{background:#1f6feb}.d-fac{background:#16a34a}.d-ter{background:#6b7280}.d-kdfin{background:#7c3aed}.d-rev{background:#06b6d4}
   .kb-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 11px;margin-bottom:9px;box-shadow:0 1px 2px rgba(16,24,40,.04);cursor:grab}
   .kb-card:hover{border-color:#c5d3e8}
   .kb-nm{font-weight:600;font-size:13px}
@@ -193,7 +194,7 @@
   .srv.compact{padding:8px 16px;background:#f7fbf8}
   .srv-sum{font-size:13px;color:#15803d;background:#eafaf0;border:1px solid #bbe7cb;border-radius:7px;padding:2px 9px;cursor:pointer}
   .srv-est{font-size:12.5px;padding:3px 7px;border:1px solid #bcbcbc;border-radius:7px;font:inherit;font-weight:500;background:#fff}
-  select.srv-est.est-hablar,select.srv-est.est-pdte_fact,select.srv-est.est-facturado,select.srv-est.est-terminado,select.srv-est.est-kd_fin{font-weight:600}
+  select.srv-est.est-revisar,select.srv-est.est-hablar,select.srv-est.est-pdte_fact,select.srv-est.est-facturado,select.srv-est.est-terminado,select.srv-est.est-kd_fin{font-weight:600}
   .ofertas-bar{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px;padding:8px 16px;background:#faf7ff;border-bottom:1px solid #eef0f2}
   .ofertas-bar .lbl{color:#5b21b6;font-weight:600;padding-top:5px}
   .ofertas-bar select{padding:5px 8px;border:1px solid #cdbff0;border-radius:7px;font:inherit;font-size:13px;background:#fff}
@@ -266,6 +267,7 @@ const DECISIONES = [
 ];
 const CLI_ESTADOS = [
   ["","— estado —"],
+  ["revisar","Revisar / decidir"],
   ["hablar","Hablar con el cliente"],
   ["pdte_fact","Pendiente de facturar"],
   ["facturado","Facturado"],
@@ -274,6 +276,7 @@ const CLI_ESTADOS = [
 ];
 const KANBAN_COLS = [
   ["",          "Sin clasificar",     "d-sin"],
+  ["revisar",   "Revisar / decidir",  "d-rev"],
   ["hablar",    "Hablar con cliente", "d-hab"],
   ["pdte_fact", "Pendiente facturar", "d-pf"],
   ["facturado", "Facturado",          "d-fac"],
