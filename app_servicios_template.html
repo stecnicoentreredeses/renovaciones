@@ -220,6 +220,39 @@
   .chip button:hover{background:#7c3aed}
   .cal-mes>h2{text-transform:capitalize}
   .cal-venc{color:var(--bad)}
+  .rnv-tools{display:flex;gap:11px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+  .rnv-tools select{padding:7px 10px;border:1px solid #bcbcbc;border-radius:7px;font:inherit}
+  .rnv-bulk{background:#faf7ff;border:1px solid #e2d6f5;border-radius:11px;padding:11px 13px;margin-bottom:15px;display:flex;flex-direction:column;gap:9px}
+  .rnv-bulk h4{margin:0 0 2px;font-size:13.5px;color:#5b21b6}
+  .rnv-bulk-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .rnv-bulk select,.rnv-bulk input{padding:6px 9px;border:1px solid #cdbff0;border-radius:7px;font:inherit;font-size:13.5px;background:#fff}
+  .rnv-list{list-style:none;margin:0;padding:0;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .rnv-item{border-bottom:1px solid #f0f0f0}
+  .rnv-item:last-child{border-bottom:0}
+  .rnv-head{display:flex;align-items:center;gap:11px;padding:9px 14px;flex-wrap:wrap}
+  .rnv-head:hover{background:#f7faff}
+  .rnv-cli{font-weight:600;min-width:230px}
+  .rnv-cli .cod{color:#9aa4b2;font-weight:500;font-size:12px;margin-left:5px}
+  .rnv-tipo{flex:1;min-width:190px;font-size:14.5px}
+  .rnv-fam{font-size:11.5px;background:#eef1f6;border:1px solid var(--line);border-radius:6px;padding:1px 7px;color:#4b5563;margin-left:4px}
+  .rnv-fch{font-size:13px;color:#b45309;background:#fff4e5;border:1px solid #ffd9a8;border-radius:6px;padding:2px 8px;font-weight:600}
+  .rnv-fch.over{color:#fff;background:var(--bad);border-color:var(--bad)}
+  .rnv-fch.soon{color:var(--warn);background:var(--warnbg)}
+  .rnv-eur{font-size:13px;background:#eafaf0;border:1px solid #bbe7cb;border-radius:6px;padding:2px 8px;color:#15803d;font-weight:600}
+  .rnv-ntask{font-size:11.5px;color:var(--mut);background:#eef0f2;border:1px solid var(--line);border-radius:10px;padding:1px 8px}
+  .rnv-tasks{padding:2px 16px 12px 42px;background:#fafbfc}
+  .rnv-hist{display:inline-flex;flex-wrap:wrap;gap:3px;align-items:center}
+  .rnv-h{font-size:11.5px;background:#eef7ff;border:1px solid #cfe3f7;border-radius:5px;padding:1px 6px;color:#1d4ed8}
+  .rnv-h.tot{background:#e7f6ec;border-color:#bbe7cb;color:#15803d;font-weight:700}
+  .rnv-grupo{margin-bottom:18px}
+  .rnv-gh{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin:0 0 7px;padding:9px 14px;background:#eef4fb;border:1px solid var(--line);border-radius:10px}
+  .rnv-gh-nm{font-size:16px;font-weight:700;color:var(--blue)}
+  .rnv-gh-n{font-size:12px;color:var(--mut);background:#fff;border:1px solid var(--line);border-radius:20px;padding:1px 9px}
+  .rnv-gh-hist{font-size:12.5px;color:#15803d;background:#e7f6ec;border:1px solid #bbe7cb;border-radius:6px;padding:1px 8px;font-weight:600}
+  .rnv-gh-pend{font-size:12.5px;color:#b45309;background:#fff4e5;border:1px solid #ffd9a8;border-radius:6px;padding:1px 8px;font-weight:600}
+  .rnv-tipo-min{flex:0 1 auto;min-width:0;color:var(--mut);font-size:13.5px}
+  .rnv-sub-h{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);margin:0 0 6px}
+  .rnv-lineas .lineas-full{margin-bottom:4px}
 </style>
 </head>
 <body>
@@ -258,6 +291,26 @@ function normDominios(m){
   return [];
 }
 function hayDominios(m){ return Array.isArray(m.dominios) && m.dominios.length>0; }
+// familia del servicio (agrupa los tipos en categorías estables para el patrón de acciones en bloque)
+function familia(s){
+  var t=(s.tipo||"").toLowerCase();
+  if((s.categoria||"")==="web") return "Web";
+  if((s.categoria||"")==="erp") return "Getradi / ERP-CRM";
+  if(t.indexOf("vpn")>=0 || t.indexOf("comunicaciones")>=0) return "VPN / Comunicaciones";
+  if(t.indexOf("antivirus")>=0 || t.indexOf("ciberseg")>=0 || t.indexOf("seguridad")>=0) return "Antivirus / Seguridad";
+  if(t.indexOf("backup")>=0) return "Backup";
+  if(t.indexOf("renting")>=0 || t.indexOf("impresora")>=0 || t.indexOf("copias")>=0) return "Renting / Impresora";
+  if(t.indexOf("hosting")>=0 || t.indexOf("dominio")>=0) return "Hosting / Dominio";
+  if(t.indexOf("365")>=0 || t.indexOf("office")>=0 || t.indexOf("oficina")>=0) return "Microsoft 365";
+  if(t.indexOf("licencia")>=0) return "Licencias";
+  if(t.indexOf("rrss")>=0 || t.indexOf("redes sociales")>=0) return "Gestión RRSS";
+  if(t.indexOf("correo")>=0) return "Correo";
+  if(t.indexOf("servidor")>=0) return "Servidor";
+  if(t.indexOf("rgpd")>=0) return "RGPD";
+  if(t.indexOf("mantenimiento")>=0) return "Mantenimiento";
+  if(t.indexOf("business intelligence")>=0) return "Business Intelligence";
+  return s.tipo || "Otro";
+}
 
 const DECISIONES = [
   ["renovar_todos","Renovar todos los años","El servicio se factura cada año de forma indefinida."],
@@ -339,6 +392,63 @@ function TaskRow({t, nota, setNota, edit, del, ctx}){
 
 function load(key, def){ try{ return JSON.parse(localStorage.getItem(key)) ?? def; }catch(e){ return def; } }
 function save(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+// descarga un Blob con nombre de archivo correcto (Chrome ignora a.download si el enlace no está en el DOM)
+function descargar(blob, nombre){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = nombre; a.rel = "noopener";
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
+}
+
+// reconstruye el estado interno (marks/manual/cmeta/tareas) desde un export decisiones_renovaciones.json
+function construirDesdeDecisiones(obj){
+  const srvByKey = {};
+  PAYLOAD.servicios.forEach(s=>{
+    srvByKey[s.codigo+"|"+s.tipo+"|"+s.origen] = s;
+    if(!srvByKey[s.codigo+"|"+s.tipo]) srvByKey[s.codigo+"|"+s.tipo] = s;
+  });
+  const marks={}, manual=[], cmeta={}, tman=[], tnotas={}, tov={};
+  const nombrePorCod={}, idPorCodTipo={}, codPorNombre={};
+  (obj.decisiones||[]).forEach((d,i)=>{
+    let s = srvByKey[d.codigo+"|"+d.tipo+"|"+d.origen] || srvByKey[d.codigo+"|"+d.tipo];
+    let id;
+    if(s){ id = s.id; }
+    else {
+      id = "MAN__"+(d.codigo||"x")+"__"+i;
+      manual.push({id, codigo:d.codigo||("MAN-"+i), cliente:d.cliente||d.codigo||"", tipo:d.tipo||"Servicio",
+        origen:"Manual", anios:d.anios_facturados||{}, kd_inicio:null, ultima_fecha:null, uso_hasta_def:"",
+        desde_anio:d.desde_anio||null, importe_sug:Number(d.proximo_importe)||0,
+        periodicidad:d.periodicidad||"anual", estado:"importado"});
+    }
+    if(d.cliente){ nombrePorCod[d.codigo]=d.cliente; codPorNombre[d.cliente]=d.codigo; }
+    idPorCodTipo[d.codigo+"|"+d.tipo]=id;
+    const ay={};
+    Object.entries(d.anios_a_facturar||{}).forEach(([a,y])=>{ ay[a]={f:y.facturar||"", imp:(y.importe!=null?y.importe:null)}; });
+    const dominios=(d.dominios||[]).map(x=>({dom:x.dominio, renovar:x.renovar!==false}));
+    marks[id]={ estado:d.estado_servicio||"", renovable:d.renovable, activado:d.activado||"",
+      periodicidad:d.periodicidad||"anual", propio:!!d.propio, lo_paga_cliente:!!d.lo_paga_cliente,
+      ofrecer:!!d.ofrecer, herramienta:d.herramienta||"", hosting:d.hosting||"",
+      desde_anio:d.desde_anio||null, uso_hasta:d.uso_hasta||"", nota:d.nota||"",
+      tipo:d.tipo, dominios:dominios, ay:ay };
+  });
+  (obj.clientes||[]).forEach(c=>{ cmeta[c.codigo]={revisado:!!c.revisado, estado:c.estado||"", ofertas:(c.ofertas||[])}; });
+  const stripDom = (srv)=> (srv||"").replace(/\s*\([^)]*\)\s*$/,"").trim();
+  (obj.tareas||[]).forEach((t,i)=>{
+    if(t.manual){ const key="TMAN__IMP__"+i;
+      tman.push({key, titulo:t.titulo||"", fecha:t.fecha||"", cli:t.cli||"", srv:t.srv||"", manual:true, hecho:!!t.hecho});
+      if(t.nota) tnotas[key]=t.nota; return; }
+    // tarea generada: reconstruye su clave para conservar 'hecha' y nota (best-effort)
+    const tipo=stripDom(t.srv), cod=codPorNombre[t.cli];
+    let key=null; const mFac=(t.titulo||"").match(/^Facturar\s+(\d{4})/);
+    if(mFac && cod){ const id=idPorCodTipo[cod+"|"+tipo]; if(id) key=id+"::fact"+mFac[1]; }
+    else if(/^No renovar dominio/.test(t.titulo||"") && cod){ const id=idPorCodTipo[cod+"|"+tipo]; const dom=(t.srv||"").split(" (")[0]; if(id&&dom) key=id+"::norenovdom::"+dom; }
+    else if(/^Ofrecer mantenimiento/.test(t.titulo||"") && cod){ const id=idPorCodTipo[cod+"|"+tipo]; if(id) key=id+"::ofrecer"; }
+    else if(/^Comercial/.test(t.titulo||"") && cod){ key="COM__"+cod; }
+    if(key){ if(t.hecho) tov[key]={...(tov[key]||{}), hecho:true}; if(t.nota) tnotas[key]=t.nota; }
+  });
+  return {marks, manual, cmeta, tman, tnotas, tov};
+}
 
 function App(){
   const [marks, setMarks]   = useState(()=>load(K_MARKS, {}));
@@ -362,6 +472,9 @@ function App(){
   const [kbConEur, setKbConEur] = useState(false);
   const [open, setOpen]     = useState({});
   const [modalAlta, setModalAlta] = useState(false);
+  const [renovSort, setRenovSort] = useState("tipo");
+  const [renovFam, setRenovFam]   = useState("");
+  const [renovExp, setRenovExp]   = useState({});
 
   useEffect(()=>save(K_MARKS, marks), [marks]);
   useEffect(()=>save(K_TOOLS, tools), [tools]);
@@ -542,6 +655,46 @@ function App(){
     }).sort((a,b)=>a.cliente.localeCompare(b.cliente));
   }, [codigosTodos, cmeta, resumen, todos, q, ocultarRev, codConNota]);
 
+  // ---- Vista Renovaciones: servicios renovables activos, ordenables, con bulk por tipo ----
+  const renovBase = useMemo(()=>{
+    return todos.filter(s=>{ const m=marks[s.id]||{};
+        if(!esRenovable(s,m)) return false;
+        const e=m.estado||""; return e!=="terminado" && e!=="kd_fin"; })
+      .map(s=>{ const m=marks[s.id]||{}; const doms=normDominios(m); const dd=doms[0]?DOM_BY[doms[0].dom]:null;
+        const fecha = m.uso_hasta || (dd?dd.expira_iso:"") || s.uso_hasta_def || "";
+        const por_anio={}; aniosFacturables(s,m).forEach(a=>{ const y=(m.ay||{})[String(a)];
+          if(y && (y.f||y.imp!=null)) por_anio[a]={facturar:y.f||"", importe:(y.imp!=null&&y.imp!=="")?y.imp:(s.importe_sug||0)}; });
+        const hist = ANIOS.filter(a=>impAnio(s,a)>0).map(a=>[a, impAnio(s,a)]);
+        const histTotal = hist.reduce((x,[,v])=>x+v, 0);
+        return {s, m, fecha, fam:familia(s), prox:proximoFacturar(por_anio), hist, histTotal}; });
+  }, [todos, marks]);
+  const renovFamilias = useMemo(()=>{ const c={}; renovBase.forEach(it=>{ c[it.fam]=(c[it.fam]||0)+1; });
+    return Object.entries(c).sort((a,b)=>a[0].localeCompare(b[0])); }, [renovBase]);
+  const renovItems = useMemo(()=>{ const t=q.trim().toLowerCase();
+    const arr = renovBase.filter(it=>{ if(renovFam && it.fam!==renovFam) return false;
+      if(t && !(it.s.cliente.toLowerCase().includes(t)||it.s.tipo.toLowerCase().includes(t)||(it.s.codigo||"").includes(t))) return false;
+      return true; });
+    const porFecha = (a,b)=>{ const A=a.fecha||"9999-99-99", B=b.fecha||"9999-99-99"; return A<B?-1:(A>B?1:a.s.cliente.localeCompare(b.s.cliente)); };
+    return arr.slice().sort((a,b)=>{
+      if(renovSort==="cliente"){ const c=a.s.cliente.localeCompare(b.s.cliente); return c|| porFecha(a,b); }
+      if(renovSort==="tipo"){ const c=a.fam.localeCompare(b.fam); return c|| porFecha(a,b); }
+      return porFecha(a,b);
+    });
+  }, [renovBase, renovFam, renovSort, q]);
+
+  function bulkPatch(items, patch){ setMarks(m=>{ const n={...m}; items.forEach(({s})=>{ n[s.id]={...(n[s.id]||{}), ...patch}; }); return n; }); }
+  function bulkAnio(items, anio, f, imp){
+    setMarks(m=>{ const n={...m};
+      items.forEach(({s})=>{ const cur=n[s.id]||{}; if(!aniosFacturables(s,cur).includes(anio)) return;
+        const ay={...(cur.ay||{})}; const prev=ay[String(anio)]||{};
+        ay[String(anio)]={...prev, f:f, imp:(imp===""||imp==null)?(prev.imp!=null?prev.imp:null):Number(imp)};
+        n[s.id]={...cur, ay}; });
+      return n; });
+  }
+  function bulkTarea(items, titulo, fecha){
+    setTman(ts=>[...ts, ...items.map(({s},i)=>({key:"TMAN__"+Date.now()+"__"+i, titulo, fecha:fecha||"", cli:s.cliente, srv:s.tipo, manual:true}))]);
+  }
+
   function exportar(){
     const dec = todos.filter(s=>marks[s.id] || s.origen==="Manual").map(s=>{
       const m = marks[s.id]||{};
@@ -570,8 +723,7 @@ function App(){
     const clientes_exp = Object.entries(cmeta).filter(([k,v])=>v && (v.revisado||v.estado||(v.ofertas&&v.ofertas.length)))
       .map(([cod,v])=>({codigo:cod, revisado:!!v.revisado, estado:v.estado||"", ofertas:normOfertas(v.ofertas)}));
     const blob = new Blob([JSON.stringify({generado:HOY, decisiones:dec, tareas:tareas_exp, clientes:clientes_exp}, null, 2)], {type:"application/json"});
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob); a.download = "decisiones_renovaciones.json"; a.click();
+    descargar(blob, "decisiones_renovaciones.json");
   }
 
   // Listado por cliente/servicio para Excel: 1 fila por servicio + fila "general" por cliente (tareas comerciales/manuales)
@@ -608,8 +760,7 @@ function App(){
     if(sinCli) rows.push(["","(sin cliente)","","","(tareas generales)","","","","","","","","","","","","","","","", sinCli]);
     const csv = [cols.map(esc).join(SEP)].concat(rows.map(r=>r.map(esc).join(SEP))).join("\r\n");
     const blob = new Blob(["﻿", csv], {type:"text/csv;charset=utf-8"});  // BOM para que Excel lea bien los acentos
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob); a.download = "listado_renovaciones.csv"; a.click();
+    descargar(blob, "listado_renovaciones.csv");
   }
 
   function copiaSeguridad(){
@@ -617,8 +768,7 @@ function App(){
     K_ALL.forEach(k=>{ const v = localStorage.getItem(k); if(v!=null) datos[k] = v; });
     const payload = {_app:"renovaciones", v:1, fecha:HOY, datos};
     const blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob); a.download = "renovaciones_backup.json"; a.click();
+    descargar(blob, "renovaciones_backup.json");
   }
 
   function restaurar(e){
@@ -635,6 +785,28 @@ function App(){
       if(!confirm("Esto SOBRESCRIBIRÁ todo tu trabajo actual con el de la copia ("+(obj.fecha||"sin fecha")+"). ¿Seguro?")) return;
       K_ALL.forEach(k=>localStorage.removeItem(k));
       claves.forEach(k=>localStorage.setItem(k, obj.datos[k]));
+      location.reload();
+    };
+    reader.readAsText(file);
+  }
+
+  function importarDecisiones(e){
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ev=>{
+      let obj;
+      try { obj = JSON.parse(ev.target.result); } catch(err){ alert("El fichero no es un JSON válido. No se ha tocado nada."); return; }
+      if(!obj || !Array.isArray(obj.decisiones)){ alert("Esto no parece un export de decisiones (debe tener una lista 'decisiones'). Si es una copia de seguridad, usa el botón Restaurar. No se ha tocado nada."); return; }
+      if(obj.decisiones.length===0){ alert("El archivo no contiene decisiones (lista vacía). Para evitar borrarte el trabajo, NO se ha importado nada."); return; }
+      // salvavidas: ¿hay trabajo actual que podríamos pisar?
+      const hayActual = (()=>{ try{ const m=JSON.parse(localStorage.getItem(K_MARKS)||"{}"); return m && Object.keys(m).length>0; }catch(e){ return false; } })();
+      if(!confirm("Importar "+obj.decisiones.length+" decisiones y "+(obj.tareas?obj.tareas.length:0)+" tareas.\n\nEsto SOBRESCRIBE el trabajo actual de este navegador."+(hayActual?"\n\nAntes de sobrescribir se descargará una copia de seguridad automática de lo que tienes ahora.":"")+"\n\n¿Continuar?")) return;
+      if(hayActual){ try{ copiaSeguridad(); }catch(e){} }
+      const r = construirDesdeDecisiones(obj);
+      save(K_MARKS, r.marks); save(K_MAN, r.manual); save(K_CMETA, r.cmeta);
+      save(K_TMAN, r.tman); save(K_TNOTAS, r.tnotas); save(K_TOV, r.tov);
       location.reload();
     };
     reader.readAsText(file);
@@ -708,6 +880,7 @@ function App(){
         {(vista==="servicios"||vista==="kanban") && <label className="chk" style={{paddingTop:0}}><input type="checkbox" checked={ocultarRev} onChange={e=>setOcultarRev(e.target.checked)} /> Ocultar revisados</label>}
         <span className="seg vista" role="group" aria-label="Vista">
           <button aria-pressed={vista==="servicios"} onClick={()=>setVista("servicios")}>Servicios</button>
+          <button aria-pressed={vista==="renov"} onClick={()=>setVista("renov")}>Renovaciones</button>
           <button aria-pressed={vista==="agenda"} onClick={()=>setVista("agenda")}>Agenda</button>
           <button aria-pressed={vista==="kanban"} onClick={()=>setVista("kanban")}>Kanban</button>
           <button aria-pressed={vista==="resumen"} onClick={()=>setVista("resumen")}>Resumen</button>
@@ -721,6 +894,8 @@ function App(){
         <button className="btn" onClick={copiaSeguridad} title="Descarga un fichero con TODO tu trabajo (copia de seguridad real, restaurable)">Copia de seguridad</button>
         <button className="btn" onClick={()=>document.getElementById("restoreFile").click()} title="Carga una copia de seguridad y restaura tu trabajo">Restaurar</button>
         <input id="restoreFile" type="file" accept="application/json,.json" style={{display:"none"}} onChange={restaurar} />
+        <button className="btn" onClick={()=>document.getElementById("importFile").click()} title="Reconstruye tu trabajo desde un decisiones_renovaciones.json (el export grande)">Importar decisiones</button>
+        <input id="importFile" type="file" accept="application/json,.json" style={{display:"none"}} onChange={importarDecisiones} />
         <button className="btn" onClick={exportarCSV} title="Descarga un listado por cliente/servicio con tareas y notas para abrir en Excel">Listado (CSV)</button>
         <button className="btn primary" onClick={exportar}>Descargar decisiones (JSON)</button>
       </div>
@@ -804,6 +979,14 @@ function App(){
         })}
         {grupos.length===0 && <p className="muted">Nada que mostrar con estos filtros.</p>}
         </React.Fragment>}
+
+        {vista==="renov" && <Renovaciones
+          items={renovItems} familias={renovFamilias} totalBase={renovBase.length}
+          fam={renovFam} setFam={setRenovFam} sort={renovSort} setSort={setRenovSort}
+          tareasRender={tareasRender} tnotas={tnotas} setTnotas={setTnotas}
+          editTarea={editTarea} borrarTarea={borrarTarea} setMark={setMark}
+          bulkPatch={bulkPatch} bulkAnio={bulkAnio} bulkTarea={bulkTarea}
+          expanded={renovExp} toggleExp={(id)=>setRenovExp(o=>({...o,[id]:!o[id]}))} />}
 
         {vista==="resumen" && <div className="resumen">
           <div className="res-kpis">
@@ -1031,6 +1214,144 @@ function Kanban({data, cols, total, nRevisados, sinRev, conEur, setSinRev, setCo
           );
         })}
       </div>
+    </section>
+  );
+}
+
+function Renovaciones({items, familias, totalBase, fam, setFam, sort, setSort,
+                       tareasRender, tnotas, setTnotas, editTarea, borrarTarea, setMark,
+                       bulkPatch, bulkAnio, bulkTarea, expanded, toggleExp}){
+  const [bEstado, setBEstado] = useState("hablar");
+  const [bAnio, setBAnio]     = useState(Number(HOY.slice(0,4)));
+  const [bImp, setBImp]       = useState("");
+  const [bAct, setBAct]       = useState("verificar");
+  const [bTit, setBTit]       = useState("");
+  const [bFch, setBFch]       = useState("");
+  const n = items.length;
+  const anioActual = Number(HOY.slice(0,4));
+  const sumPend = items.reduce((a,it)=> a + (it.prox && it.prox.importe!=null && it.prox.anio>=anioActual ? (Number(it.prox.importe)||0) : 0), 0);
+  const ask = (msg)=> n>0 && confirm(msg.replace("{n}", n));
+  const tareasDe = (s)=> tareasRender.filter(t=> (t.key && t.key.split("::")[0]===s.id) || (t.manual && t.cli===s.cliente && t.srv===s.tipo));
+
+  function Fila(it){
+    const s=it.s, m=it.m; const exp=!!expanded[s.id];
+    const todasT = tareasDe(s); const pend = todasT.filter(t=>!t.hecho);
+    const cls = !it.fecha ? "" : (it.fecha<HOY ? "over" : (it.fecha<SOON ? "soon" : ""));
+    return (
+      <li className="rnv-item" key={s.id}>
+        <div className="rnv-head">
+          <button className="caret" onClick={()=>toggleExp(s.id)} aria-label={exp?"Contraer":"Desplegar"}>{exp?"▾":"▸"}</button>
+          <span className="rnv-cli">{s.cliente}<span className="cod">{s.codigo}</span></span>
+          {sort!=="tipo" && <span className="rnv-tipo">{s.tipo} <span className="rnv-fam">{it.fam}</span></span>}
+          {sort==="tipo" && <span className="rnv-tipo rnv-tipo-min">{s.tipo}</span>}
+          {it.fecha && <span className={"rnv-fch "+cls} title="Próxima renovación / uso hasta">{fmt(it.fecha)}</span>}
+          {it.hist.length>0 && <span className="rnv-hist" title={"Facturado: "+it.hist.map(([a,v])=>a+" "+Math.round(v)+"€").join(" · ")}>
+            {it.hist.map(([a,v])=><span key={a} className="rnv-h">{String(a).slice(2)}·{Math.round(v)}</span>)}
+            <span className="rnv-h tot">Σ {Math.round(it.histTotal).toLocaleString("es-ES")}€</span>
+          </span>}
+          {it.prox && it.prox.importe!=null && <span className="rnv-eur" title="Próximo importe a facturar">→ {Math.round(it.prox.importe)}€ ({it.prox.anio})</span>}
+          {pend.length>0 && <span className="rnv-ntask">{pend.length} {pend.length===1?"tarea":"tareas"}</span>}
+          <select className={"srv-est"+(m.estado?" est-"+m.estado:"")} value={m.estado||""} onChange={e=>setMark(s.id,{estado:e.target.value})} title="Estado de este servicio">
+            {CLI_ESTADOS.map(([x,l])=><option key={x} value={x}>{l}</option>)}
+          </select>
+        </div>
+        {exp && <div className="rnv-tasks">
+          {s.lineas && s.lineas.length>0 && <div className="rnv-lineas">
+            <div className="rnv-sub-h">Líneas de factura</div>
+            <div className="lineas-full">
+              {s.lineas.map((ln,i)=>(
+                <div key={i} className="lnf">{ln.fecha?<b>{fmt(ln.fecha)}</b>:(ln.anio?<b>{ln.anio}</b>:null)} {ln.desc}{ln.importe?" · "+Math.round(ln.importe)+"€":""}</div>
+              ))}
+            </div>
+          </div>}
+          <div className="rnv-sub-h" style={{marginTop:10}}>Tareas</div>
+          {todasT.length===0 && <span className="muted" style={{fontSize:13}}>Sin tareas para este servicio. Marca años a facturar o crea una con el bloque de arriba.</span>}
+          {todasT.length>0 && <ul className="res-list">
+            {todasT.map((t,i)=>(
+              <TaskRow key={t.key||i} t={t} ctx={false}
+                nota={tnotas[t.key]||""} setNota={val=>setTnotas(nn=>({...nn,[t.key]:val}))}
+                edit={patch=>editTarea(t,patch)} del={()=>borrarTarea(t)} />
+            ))}
+          </ul>}
+        </div>}
+      </li>
+    );
+  }
+
+  // agrupación por familia para el modo "Por tipo"
+  const grupos = [];
+  if(sort==="tipo"){
+    const gmap = {};
+    items.forEach(it=>{ (gmap[it.fam] = gmap[it.fam] || {fam:it.fam, items:[], hist:0, pend:0}); const g=gmap[it.fam];
+      g.items.push(it); g.hist += it.histTotal;
+      if(it.prox && it.prox.importe!=null && it.prox.anio>=anioActual) g.pend += (Number(it.prox.importe)||0); });
+    Object.values(gmap).sort((a,b)=>a.fam.localeCompare(b.fam)).forEach(g=>grupos.push(g));
+  }
+
+  return (
+    <section className="agenda-page" style={{maxWidth:"none"}}>
+      <p className="muted" style={{fontSize:13,margin:"0 0 10px"}}>Servicios renovables activos (renovable=sí, sin terminar/KD finalizado). Agrupa por tipo de servicio para gestionarlos en bloque: en cada cliente ves su <b>fecha de renovación</b> y lo <b>facturado por año</b> (Σ = total histórico). Despliega ▸ para ver/editar sus tareas.</p>
+      <div className="rnv-tools">
+        <span className="lbl">Patrón (tipo):</span>
+        <select value={fam} onChange={e=>setFam(e.target.value)}>
+          <option value="">Todos los tipos ({totalBase})</option>
+          {familias.map(([f,c])=><option key={f} value={f}>{f} ({c})</option>)}
+        </select>
+        <span className="seg vista" role="group" aria-label="Orden">
+          <button aria-pressed={sort==="tipo"} onClick={()=>setSort("tipo")}>Por tipo</button>
+          <button aria-pressed={sort==="fecha"} onClick={()=>setSort("fecha")}>Por fecha</button>
+          <button aria-pressed={sort==="cliente"} onClick={()=>setSort("cliente")}>Por cliente</button>
+        </span>
+        <span className="muted">{n} servicios{sumPend>0?(" · "+Math.round(sumPend).toLocaleString("es-ES")+" € pendientes"):""}</span>
+      </div>
+
+      <div className="rnv-bulk">
+        <h4>Acciones en bloque — se aplican a los {n} servicios mostrados {fam?("· patrón: "+fam):"· todos los tipos"}</h4>
+        <div className="rnv-bulk-row">
+          <span className="lbl">Estado:</span>
+          <select value={bEstado} onChange={e=>setBEstado(e.target.value)}>
+            {CLI_ESTADOS.filter(([v])=>v).map(([v,l])=><option key={v} value={v}>{l}</option>)}
+          </select>
+          <button className="btn" onClick={()=>{ if(ask("¿Poner ese estado en {n} servicios?")) bulkPatch(items,{estado:bEstado}); }}>Aplicar estado</button>
+        </div>
+        <div className="rnv-bulk-row">
+          <span className="lbl">Facturar año:</span>
+          <select value={bAnio} onChange={e=>setBAnio(Number(e.target.value))}>{ANIOS.map(a=><option key={a} value={a}>{a}</option>)}</select>
+          <input type="number" placeholder="importe común (opcional)" value={bImp} onChange={e=>setBImp(e.target.value)} style={{width:200}} />
+          <button className="btn" onClick={()=>{ if(ask("¿Marcar "+bAnio+" = Sí facturar en {n} servicios? (solo años sin factura)")) bulkAnio(items,bAnio,"si",bImp); }}>Sí facturar</button>
+          <button className="btn" onClick={()=>{ if(ask("¿Marcar "+bAnio+" = No facturar en {n} servicios?")) bulkAnio(items,bAnio,"no",""); }}>No facturar</button>
+        </div>
+        <div className="rnv-bulk-row">
+          <span className="lbl">Activado:</span>
+          <select value={bAct} onChange={e=>setBAct(e.target.value)}>{ACTIVADO.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>
+          <button className="btn" onClick={()=>{ if(ask("¿Poner activado en {n} servicios?")) bulkPatch(items,{activado:bAct}); }}>Aplicar activado</button>
+          <span className="lbl" style={{marginLeft:12}}>Renovable:</span>
+          <button className="btn" onClick={()=>{ if(ask("¿Marcar renovable = Sí en {n} servicios?")) bulkPatch(items,{renovable:true}); }}>Sí</button>
+          <button className="btn" onClick={()=>{ if(ask("¿Marcar renovable = No en {n} servicios?")) bulkPatch(items,{renovable:false}); }}>No</button>
+        </div>
+        <div className="rnv-bulk-row">
+          <span className="lbl">Crear tarea para todos:</span>
+          <input placeholder="título de la tarea" value={bTit} onChange={e=>setBTit(e.target.value)} style={{flex:1,minWidth:240}} />
+          <input type="date" value={bFch} onChange={e=>setBFch(e.target.value)} />
+          <button className="btn" onClick={()=>{ if(!bTit.trim()){ alert("Pon un título para la tarea."); return; } if(ask("¿Crear esa tarea en {n} servicios?")){ bulkTarea(items, bTit.trim(), bFch); setBTit(""); setBFch(""); } }}>Crear tarea</button>
+        </div>
+      </div>
+
+      {n===0 && <p className="muted">No hay servicios con este patrón.</p>}
+      {n>0 && sort!=="tipo" && <ul className="rnv-list">
+        {items.map(Fila)}
+      </ul>}
+      {n>0 && sort==="tipo" && grupos.map(g=>(
+        <div className="rnv-grupo" key={g.fam}>
+          <h3 className="rnv-gh">
+            <span className="rnv-gh-nm">{g.fam}</span>
+            <span className="rnv-gh-n">{g.items.length} {g.items.length===1?"cliente":"clientes"}</span>
+            {g.hist>0 && <span className="rnv-gh-hist" title="Total facturado históricamente en esta familia">histórico Σ {Math.round(g.hist).toLocaleString("es-ES")}€</span>}
+            {g.pend>0 && <span className="rnv-gh-pend" title="Total próximo importe a facturar">pendiente {Math.round(g.pend).toLocaleString("es-ES")}€</span>}
+          </h3>
+          <ul className="rnv-list">{g.items.map(Fila)}</ul>
+        </div>
+      ))}
     </section>
   );
 }
